@@ -6,8 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.ContentRepository
-import com.maurimax.core.data.FakeContentRepository
+import com.maurimax.core.data.Graph
 import com.maurimax.core.model.ContentRow
+import com.maurimax.core.model.Credentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,8 +49,9 @@ class HomeViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { HomeViewModel(FakeContentRepository()) }
+        /** Builds a home screen bound to the signed-in customer's catalog. */
+        fun factory(credentials: Credentials): ViewModelProvider.Factory = viewModelFactory {
+            initializer { HomeViewModel(Graph.contentRepository(credentials)) }
         }
     }
 }

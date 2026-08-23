@@ -94,8 +94,8 @@ UI (Compose)  →  ViewModel (StateFlow<UiState>)  →  Repository  →  { Netwo
 | **M2** | Mobile shell | Bottom nav; Home / Catalog / Search / Profile against fake data. Clickable end to end. |
 | **M3** | TV shell | D-pad focus traversal, hero carousel + content rows, immersive detail screen. Tested on the TV emulator profile. |
 | **M4** | Player | Media3 integration, HLS/DASH, mobile touch controls + TV D-pad controls, resume position, PiP (mobile), background audio behavior. |
-| **M5** | Real data | Wire the actual content source (§5), Room caching, Paging 3, error/empty/offline states. |
-| **M6** | Accounts | Auth, multiple profiles, watchlist, continue-watching sync. |
+| **M5** | Real data | ✅ Xtream client, sign-in, live categories and channels on the home screen. Still to come: Room caching, Paging 3, offline states. |
+| **M6** | Catalog depth | Films and series browsing, EPG from XMLTV, search, favourites. |
 | **M7** | Offline + DRM | Media3 downloads (mobile), Widevine if the catalog needs it. |
 | **M8** | Release | R8/ProGuard, signing config, Play Console listing for **both** phone and TV, internal testing track. |
 
@@ -103,18 +103,53 @@ M0–M4 run entirely on fake data, so none of them are blocked by §5.
 
 ---
 
-## 5. Open decision: where does the content come from?
+## 5. Content source: Xtream Codes, with the host baked in
 
-This is the one thing that changes real work, and it's why `ContentRepository` is an interface:
+**Decided.** MAURIMAX is an Xtream Codes client for one specific portal — yours.
 
-- **(a) Our own backend** — we design and build the API too; biggest scope, full control.
-- **(b) Third-party metadata + own streams** — e.g. TMDB-style metadata joined to your own URLs.
-- **(c) IPTV playlists** — M3U / Xtream Codes; changes the whole data model to channels + EPG.
-- **(d) Local / sideloaded media** — device or NAS playback.
+The difference from a generic IPTV player is the login. A generic player asks for
+host, username and password. MAURIMAX asks for **username and password only**:
+the portal URL is compiled into the build, so the app is bound to your server and
+a customer never sees, types or changes a server address.
 
-Everything through M4 is unaffected. M5 onward needs an answer.
+```
+gradle.properties
+  maurimax.portalUrl=http://your-server:8080   ← the only place the host appears
+        │
+        └─> BuildConfig.PORTAL_URL  ─>  XtreamClient / XtreamUrls
+```
 
----
+### The panel API
+
+| Call | Purpose |
+|---|---|
+| `player_api.php?username=&password=` | Sign-in — `user_info.auth == 1` means valid |
+| `…&action=get_live_categories` / `get_live_streams` | Live TV |
+| `…&action=get_vod_categories` / `get_vod_streams` | Films |
+| `…&action=get_series_categories` / `get_series` | Series |
+| `xmltv.php?username=&password=` | Full EPG |
+
+Playback URLs are path-encoded rather than API calls, which is why `XtreamUrls`
+is unit tested:
+
+```
+{portal}/live/{user}/{pass}/{stream_id}.m3u8
+{portal}/movie/{user}/{pass}/{stream_id}.{container_extension}
+{portal}/series/{user}/{pass}/{episode_id}.{container_extension}
+```
+
+### Panels lie about JSON types
+
+The same field comes back as `"1"` on one server, `1` on another and `null` on a
+third. Every DTO field goes through a lenient serializer so a panel quirk cannot
+crash the app; `DtoParsingTest` pins the shapes seen in the wild.
+
+### Sign-in outcomes are distinguished
+
+"Wrong password", "account expired" and "server unreachable" are three different
+failures with three different customer-facing messages. A customer cannot fix an
+outage, so that message says to check their connection rather than showing an
+exception.
 
 ## 6. Build & verification constraint
 

@@ -7,11 +7,13 @@ data class MediaItem(
     val year: Int,
     val genre: String,
     val description: String,
-    /** Placeholder artwork tint, as 0xAARRGGBB. Replaced by real poster URLs in M5. */
+    /** Fallback artwork tint, as 0xAARRGGBB, shown until [artworkUrl] loads. */
     val artworkTint: Long,
     val durationMinutes: Int,
     /** 0f..1f — how far through the user is. 0f means unwatched. */
     val progress: Float = 0f,
+    /** Channel logo or poster from the portal. Empty when the panel has none. */
+    val artworkUrl: String = "",
 )
 
 /** A titled horizontal row of titles, e.g. "Continue watching". */
