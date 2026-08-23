@@ -227,6 +227,7 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
                 title = item.title,
                 fallbackTint = item.artworkTint,
                 crop = portrait,
+                showFallbackLabel = false,
                 modifier = Modifier.fillMaxSize(),
             )
         }

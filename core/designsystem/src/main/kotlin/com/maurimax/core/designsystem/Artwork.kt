@@ -45,6 +45,12 @@ fun Artwork(
     /** Portrait key art is cropped to fill; wide channel logos are fit inside. */
     crop: Boolean = true,
     fallbackTextSize: TextUnit = 13.sp,
+    /**
+     * Whether the fallback plate carries the title. False where the layout
+     * already labels the tile underneath — printing the name twice is the
+     * clearest tell of a cheap catalogue.
+     */
+    showFallbackLabel: Boolean = true,
 ) {
     var loaded by remember(url) { mutableStateOf(false) }
     var failed by remember(url) { mutableStateOf(false) }
@@ -57,7 +63,7 @@ fun Artwork(
     Box(modifier = modifier.background(plateBrush(fallbackTint))) {
         // The plate stays behind the image rather than being swapped out, so a
         // logo with transparency has something considered to sit on.
-        if (!loaded || failed) {
+        if ((!loaded || failed) && showFallbackLabel) {
             BasicText(
                 text = title,
                 style = TextStyle(

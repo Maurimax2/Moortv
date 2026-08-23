@@ -223,7 +223,7 @@ private fun TvCatalog(
                 item = hero,
                 modifier = Modifier.padding(
                     start = Spacing.tvOverscan,
-                    top = Spacing.lg,
+                    top = Spacing.md,
                     end = Spacing.tvOverscan,
                 ),
             )
@@ -234,7 +234,7 @@ private fun TvCatalog(
             contentPadding = PaddingValues(
                 start = Spacing.tvOverscan,
                 end = Spacing.tvOverscan,
-                top = Spacing.lg,
+                top = Spacing.md,
                 bottom = Spacing.xl,
             ),
         ) {
@@ -258,9 +258,9 @@ private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
             text = item.title,
             color = Color.White,
             fontWeight = FontWeight.Black,
-            fontSize = 42.sp,
-            lineHeight = 46.sp,
-            maxLines = 2,
+            fontSize = 34.sp,
+            lineHeight = 38.sp,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
@@ -274,7 +274,7 @@ private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
                 text = item.description,
                 color = Brand.TextSecondary,
                 fontSize = 14.sp,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = Spacing.sm),
             )
@@ -299,7 +299,12 @@ private fun TvRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            // A focused card scales to 1.08 and draws a border outside its bounds;
+            // without room to grow it collides with the row title above it.
+            contentPadding = PaddingValues(vertical = Spacing.sm),
+        ) {
             itemsIndexed(row.items, key = { _, item -> item.id }) { index, item ->
                 TvTile(
                     item = item,
@@ -326,8 +331,8 @@ private fun TvTile(
     modifier: Modifier = Modifier,
 ) {
     val portrait = tab.usesPortraitArt
-    val tileWidth = if (portrait) 150.dp else 210.dp
-    val tileHeight = if (portrait) 225.dp else 118.dp
+    val tileWidth = if (portrait) 132.dp else 196.dp
+    val tileHeight = if (portrait) 198.dp else 110.dp
 
     Card(
         onClick = onClick,
