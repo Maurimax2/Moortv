@@ -2,7 +2,18 @@
 
 Android streaming app for **phone, tablet and Android TV** — one Kotlin codebase, two form factors.
 
-> Status: planning. See [`docs/PLAN.md`](docs/PLAN.md) for the architecture and milestone plan.
+> Status: M0/M1 — both apps build and CI is green. The catalog is still
+> placeholder data. See [`docs/PLAN.md`](docs/PLAN.md) for the architecture and milestone plan.
+
+## Getting an APK
+
+No local Android SDK needed. Every push builds both apps in GitHub Actions and
+attaches the APKs to the run:
+
+1. Open the newest **Android** run under the repo's **Actions** tab.
+2. Download `maurimax-mobile-debug` or `maurimax-tv-debug` from **Artifacts**.
+3. Unzip, then install — tap the file on a phone, or
+   `adb connect <tv-ip> && adb install -r maurimax-tv-debug.apk` for a TV.
 
 ## Stack
 
