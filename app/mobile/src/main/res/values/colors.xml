@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The mark is drawn on white; the adaptive background keeps it that way. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Ground colour for the window before Compose draws, so launch does not flash. -->
+    <color name="maurimax_ink">#0A0610</color>
+</resources>

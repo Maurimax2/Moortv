@@ -5,47 +5,67 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * MAURIMAX brand tokens. Form-factor agnostic on purpose: the mobile theme and
- * the TV theme both build on exactly these values, so the two apps can never
- * drift apart visually.
+ * MAURIMAX brand tokens, taken from the mark itself: the violet and the orange
+ * are sampled straight out of the logo artwork.
  *
- * The palette is near-black rather than grey, with a single warm accent. On an
- * OLED TV a true black ground makes artwork the only lit thing on screen, which
- * is what makes a catalogue feel expensive rather than busy.
+ * The two hues carry different jobs and never swap. Violet is identity — it
+ * tints the ground, the surfaces and anything structural. Orange is intent —
+ * focus, actions, live state, progress. Because only one of them ever means
+ * "this is what you are about to do", the eye never has to choose between two
+ * competing highlights, which is what separates a storefront from a dashboard.
  */
 object Brand {
-    val Ink = Color(0xFF07070B)
-    val Surface = Color(0xFF121218)
-    val SurfaceRaised = Color(0xFF1C1C25)
-    val Outline = Color(0xFF2E2E3A)
 
-    val Accent = Color(0xFFE23B2E)
-    val AccentBright = Color(0xFFFF5F4E)
+    // ---- sampled from the logo -------------------------------------------
+    val Violet = Color(0xFF4E0D83)
+    val Orange = Color(0xFFE86D31)
 
-    val TextPrimary = Color(0xFFF5F5F7)
-    val TextSecondary = Color(0xFFA0A0AE)
-    val TextTertiary = Color(0xFF6C6C7A)
+    /** Lifted variants: the source hues are too dark to read as text on ink. */
+    val VioletLit = Color(0xFF8B45D6)
+    val OrangeLit = Color(0xFFFF9152)
 
-    /** Sits under hero artwork so overlaid text keeps contrast at any brightness. */
+    // ---- ground ----------------------------------------------------------
+    /**
+     * Near-black carrying a violet undertone rather than neutral grey. On an
+     * OLED panel it still reads as black, but every surface above it feels part
+     * of the same object instead of artwork floating on a system background.
+     */
+    val Ink = Color(0xFF0A0610)
+    val Surface = Color(0xFF140C1F)
+    val SurfaceRaised = Color(0xFF1E1330)
+    val Outline = Color(0xFF332347)
+
+    // ---- type ------------------------------------------------------------
+    val TextPrimary = Color(0xFFF7F4FA)
+    val TextSecondary = Color(0xFFA9A0B8)
+    val TextTertiary = Color(0xFF6E6580)
+
+    // ---- washes ----------------------------------------------------------
+    /** Under hero artwork, so overlaid copy holds contrast at any brightness. */
     val HeroScrim = Brush.verticalGradient(
         0f to Color.Transparent,
-        0.45f to Color(0x66000000),
+        0.42f to Color(0x730A0610),
         1f to Ink,
     )
 
-    /** Left-edge scrim for TV, where hero text sits beside the art, not under it. */
-    val HeroScrimHorizontal = Brush.horizontalGradient(
+    /**
+     * Side scrim for TV, where hero copy sits beside the art rather than under
+     * it. Declared start-to-end so it mirrors correctly in Arabic.
+     */
+    val HeroScrimSide = Brush.horizontalGradient(
         0f to Ink,
-        0.55f to Color(0xCC07070B),
+        0.5f to Color(0xD90A0610),
         1f to Color.Transparent,
     )
 
-    /** Applied to every tile so bright artwork never fights the ground. */
-    val TileScrim = Brush.verticalGradient(
-        0f to Color.Transparent,
-        0.6f to Color(0x00000000),
-        1f to Color(0xCC000000),
+    /** Violet bloom behind the sign-in mark. */
+    val SignInGlow = Brush.radialGradient(
+        0f to Color(0x384E0D83),
+        1f to Color.Transparent,
     )
+
+    /** Focus ring bloom. Orange, so focus never competes with brand violet. */
+    val FocusGlow = Color(0x4DE86D31)
 }
 
 /** Spacing scale. TV needs more breathing room than a phone, hence two values. */
@@ -60,8 +80,9 @@ object Spacing {
     val tvOverscan = 48.dp
 }
 
-/** Corner radii. Tight rather than pill-shaped — key art should look like a poster. */
+/** Corner radii. Tight rather than pill-shaped — key art should read as a poster. */
 object Corners {
-    val tile = 6.dp
-    val card = 10.dp
+    val tile = 8.dp
+    val card = 12.dp
+    val control = 12.dp
 }

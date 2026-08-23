@@ -12,7 +12,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,7 +44,7 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(2, state.rows.size)
         assertEquals("Entertainment", state.rows.first().title)
-        assertNull(state.error)
+        assertFalse(state.failed)
     }
 
     @Test
@@ -92,13 +92,13 @@ class HomeViewModelTest {
 
         val viewModel = HomeViewModel(flaky)
         testScheduler.advanceUntilIdle()
-        assertEquals("portal unreachable", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.failed)
 
         fail = false
         viewModel.retry()
         testScheduler.advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.failed)
         assertEquals(2, viewModel.uiState.value.rows.size)
     }
 
@@ -112,6 +112,6 @@ class HomeViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isEmpty)
-        assertNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.failed)
     }
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Arabic is the product's default language: it sits in values/ so it is what a
+  device gets unless it specifically asks for another translation.
+-->
+<resources>
+    <string name="auth_subtitle">سجّل الدخول باسم المستخدم وكلمة المرور الخاصَّين باشتراكك.</string>
+    <string name="auth_username">اسم المستخدم</string>
+    <string name="auth_password">كلمة المرور</string>
+    <string name="auth_show">إظهار</string>
+    <string name="auth_hide">إخفاء</string>
+    <string name="auth_sign_in">تسجيل الدخول</string>
+    <string name="auth_signing_in">جارٍ تسجيل الدخول…</string>
+
+    <string name="auth_error_credentials">اسم المستخدم أو كلمة المرور غير صحيحة. تحقّق منهما وحاول مرة أخرى.</string>
+    <!-- %1$s is the account state the portal reports, e.g. Expired. -->
+    <string name="auth_error_inactive">هذا الحساب غير نشط (%1$s). يرجى التواصل مع الدعم لتجديد اشتراكك.</string>
+    <string name="auth_error_unreachable">تعذّر الوصول إلى MAURIMAX. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.</string>
+</resources>

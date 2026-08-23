@@ -5,8 +5,12 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 internal val MobileColors = darkColorScheme(
-    primary = Brand.Accent,
-    onPrimary = Brand.TextPrimary,
+    primary = Brand.Orange,
+    onPrimary = Color_White,
+    primaryContainer = Brand.Violet,
+    onPrimaryContainer = Brand.TextPrimary,
+    secondary = Brand.VioletLit,
+    onSecondary = Brand.TextPrimary,
     background = Brand.Ink,
     onBackground = Brand.TextPrimary,
     surface = Brand.Surface,
@@ -14,12 +18,15 @@ internal val MobileColors = darkColorScheme(
     surfaceVariant = Brand.SurfaceRaised,
     onSurfaceVariant = Brand.TextSecondary,
     outline = Brand.Outline,
+    error = Brand.OrangeLit,
+    onError = Brand.TextPrimary,
 )
 
 @Composable
 fun MaurimaxMobileTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = MobileColors,
+        typography = MaurimaxTypography,
         content = content,
     )
 }
@@ -28,12 +35,11 @@ fun MaurimaxMobileTheme(content: @Composable () -> Unit) {
  * Applies the Material3 dark scheme without the rest of the mobile theme.
  *
  * Compose for TV has no text field — there is no `androidx.tv.material3.TextField`
- * — so TV forms must use Material3 components. Inside the TV theme those
- * components find no Material3 colour scheme and fall back to the default light
- * one, which renders a white form on a black screen. Wrapping them in this
- * fixes that.
+ * — so TV forms must use Material3 components. Inside the TV theme those find no
+ * Material3 colour scheme and fall back to the default light one, rendering a
+ * white form on a black screen. Wrapping them in this fixes that.
  */
 @Composable
 fun MaurimaxFormColors(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = MobileColors, content = content)
+    MaterialTheme(colorScheme = MobileColors, typography = MaurimaxTypography, content = content)
 }

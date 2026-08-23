@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -19,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,18 +36,25 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Brand
+import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.Wordmark
 import com.maurimax.core.designsystem.Spacing
 
 @Composable
 fun LoginScreenMobile(
     viewModel: LoginViewModel,
+    language: String,
+    onLanguageChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LoginScreenMobile(
         state = state,
+        language = language,
+        onLanguageChange = onLanguageChange,
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
@@ -56,6 +65,8 @@ fun LoginScreenMobile(
 @Composable
 fun LoginScreenMobile(
     state: LoginUiState,
+    language: String = com.maurimax.core.data.AppLocale.ARABIC,
+    onLanguageChange: (String) -> Unit = {},
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -77,24 +88,19 @@ fun LoginScreenMobile(
                 .padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            Wordmark(fontSize = 32.sp)
             Text(
-                text = "MAURIMAX",
-                color = Brand.Accent,
-                fontWeight = FontWeight.Black,
-                fontSize = 34.sp,
-                letterSpacing = 5.sp,
-            )
-            Text(
-                text = "Sign in with the username and password from your subscription.",
+                text = stringResource(R.string.auth_subtitle),
                 color = Brand.TextSecondary,
                 fontSize = 14.sp,
+                lineHeight = 20.sp,
                 modifier = Modifier.padding(bottom = Spacing.sm),
             )
 
             OutlinedTextField(
                 value = state.username,
                 onValueChange = onUsernameChange,
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.auth_username)) },
                 singleLine = true,
                 enabled = !state.signingIn,
                 keyboardOptions = KeyboardOptions(
@@ -108,7 +114,7 @@ fun LoginScreenMobile(
             OutlinedTextField(
                 value = state.password,
                 onValueChange = onPasswordChange,
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.auth_password)) },
                 singleLine = true,
                 enabled = !state.signingIn,
                 visualTransformation = if (passwordVisible) {
@@ -124,7 +130,9 @@ fun LoginScreenMobile(
                 trailingIcon = {
                     TextButton(onClick = { passwordVisible = !passwordVisible }) {
                         Text(
-                            text = if (passwordVisible) "Hide" else "Show",
+                            text = stringResource(
+                                if (passwordVisible) R.string.auth_hide else R.string.auth_show,
+                            ),
                             color = Brand.TextSecondary,
                             fontSize = 13.sp,
                         )
@@ -134,20 +142,28 @@ fun LoginScreenMobile(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (state.error != null) {
-                Text(text = state.error, color = Brand.AccentBright, fontSize = 14.sp)
+            state.error?.let { failure ->
+                Text(
+                    text = failure.message(),
+                    color = Brand.OrangeLit,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                )
             }
 
             Button(
                 onClick = onSubmit,
                 enabled = state.canSubmit,
+                shape = RoundedCornerShape(Corners.control),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Brand.Accent,
+                    containerColor = Brand.Orange,
                     contentColor = Brand.TextPrimary,
                     disabledContainerColor = Brand.SurfaceRaised,
-                    disabledContentColor = Brand.TextSecondary,
+                    disabledContentColor = Brand.TextTertiary,
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
             ) {
                 if (state.signingIn) {
                     CircularProgressIndicator(
@@ -156,9 +172,19 @@ fun LoginScreenMobile(
                         modifier = Modifier.padding(vertical = Spacing.xs),
                     )
                 } else {
-                    Text("Sign in", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = stringResource(R.string.auth_sign_in),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                    )
                 }
             }
+
+            LanguageSwitch(
+                current = language,
+                onSelect = onLanguageChange,
+                modifier = Modifier.padding(top = Spacing.sm),
+            )
         }
     }
 }
@@ -167,9 +193,9 @@ fun LoginScreenMobile(
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Brand.TextPrimary,
     unfocusedTextColor = Brand.TextPrimary,
-    focusedBorderColor = Brand.Accent,
+    focusedBorderColor = Brand.Orange,
     unfocusedBorderColor = Brand.Outline,
-    focusedLabelColor = Brand.Accent,
+    focusedLabelColor = Brand.Orange,
     unfocusedLabelColor = Brand.TextSecondary,
-    cursorColor = Brand.Accent,
+    cursorColor = Brand.Orange,
 )

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_subtitle">Connectez-vous avec le nom d\'utilisateur et le mot de passe de votre abonnement.</string>
+    <string name="auth_username">Nom d\'utilisateur</string>
+    <string name="auth_password">Mot de passe</string>
+    <string name="auth_show">Afficher</string>
+    <string name="auth_hide">Masquer</string>
+    <string name="auth_sign_in">Se connecter</string>
+    <string name="auth_signing_in">Connexion…</string>
+
+    <string name="auth_error_credentials">Nom d\'utilisateur ou mot de passe incorrect. Vérifiez-les et réessayez.</string>
+    <string name="auth_error_inactive">Ce compte est inactif (%1$s). Contactez le support pour renouveler votre abonnement.</string>
+    <string name="auth_error_unreachable">Impossible de joindre MAURIMAX. Vérifiez votre connexion et réessayez.</string>
+</resources>

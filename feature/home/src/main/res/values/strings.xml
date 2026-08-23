@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_live">البث المباشر</string>
+    <string name="tab_movies">أفلام</string>
+    <string name="tab_series">مسلسلات</string>
+
+    <string name="kind_live">مباشر</string>
+    <string name="kind_catch_up">إعادة المشاهدة</string>
+    <string name="kind_movie">فيلم</string>
+    <string name="kind_series">مسلسل</string>
+
+    <string name="home_loading">جارٍ التحميل…</string>
+    <string name="home_empty">لا يوجد محتوى هنا بعد.</string>
+    <string name="home_error">تعذّر تحميل المحتوى.</string>
+    <string name="home_retry">إعادة المحاولة</string>
+</resources>

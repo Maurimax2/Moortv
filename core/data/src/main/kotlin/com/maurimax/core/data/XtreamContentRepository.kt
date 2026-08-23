@@ -6,6 +6,7 @@ import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
 import com.maurimax.core.model.LiveChannel
 import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.MediaKind
 import com.maurimax.core.model.Movie
 import com.maurimax.core.model.Series
 import com.maurimax.core.network.XtreamApi
@@ -155,23 +156,20 @@ internal fun SeriesDto.toModel() = Series(
 internal fun Movie.toMediaItem() = MediaItem(
     id = "movie-$streamId",
     title = name,
-    year = 0,
-    genre = rating.takeIf { it.isNotBlank() }?.let { "★ $it" } ?: "Film",
-    description = "",
+    kind = MediaKind.MOVIE,
     artworkTint = tintFor(name),
-    durationMinutes = 0,
     artworkUrl = posterUrl,
+    rating = rating,
 )
 
 internal fun Series.toMediaItem() = MediaItem(
     id = "series-$seriesId",
     title = name,
-    year = 0,
-    genre = rating.takeIf { it.isNotBlank() }?.let { "★ $it" } ?: "Series",
-    description = plot,
+    kind = MediaKind.SERIES,
     artworkTint = tintFor(name),
-    durationMinutes = 0,
     artworkUrl = posterUrl,
+    rating = rating,
+    description = plot,
 )
 
 /**
@@ -182,11 +180,8 @@ internal fun Series.toMediaItem() = MediaItem(
 internal fun LiveChannel.toMediaItem() = MediaItem(
     id = "live-$streamId",
     title = name,
-    year = 0,
-    genre = if (hasCatchUp) "Catch-up" else "Live",
-    description = "",
+    kind = if (hasCatchUp) MediaKind.CATCH_UP else MediaKind.LIVE,
     artworkTint = tintFor(name),
-    durationMinutes = 0,
     artworkUrl = logoUrl,
 )
 

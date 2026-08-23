@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.MaurimaxTv" parent="android:Theme.DeviceDefault.NoActionBar">
-        <item name="android:windowBackground">#07070B</item>
+        <item name="android:windowBackground">#0A0610</item>
     </style>
 </resources>

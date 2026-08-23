@@ -20,9 +20,9 @@ data class HomeUiState(
     val tab: CatalogTab = CatalogTab.LIVE,
     val rows: List<ContentRow> = emptyList(),
     val loading: Boolean = true,
-    val error: String? = null,
+    val failed: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = !loading && error == null && rows.isEmpty()
+    val isEmpty: Boolean get() = !loading && !failed && rows.isEmpty()
 }
 
 /**
@@ -48,7 +48,7 @@ class HomeViewModel(
     }
 
     fun selectTab(tab: CatalogTab) {
-        if (tab == _uiState.value.tab && _uiState.value.error == null) return
+        if (tab == _uiState.value.tab && !_uiState.value.failed) return
 
         val cached = cache[tab]
         if (cached != null) {
@@ -67,15 +67,12 @@ class HomeViewModel(
             runCatching { repository.rows(tab) }
                 .onSuccess { rows ->
                     cache[tab] = rows
-                    _uiState.update { it.copy(rows = rows, loading = false, error = null) }
+                    _uiState.update { it.copy(rows = rows, loading = false, failed = false) }
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            error = error.message ?: "Could not load ${tab.label.lowercase()}",
-                        )
-                    }
+                .onFailure {
+                    // The exception text is a developer detail; the screen shows
+                    // a translated message instead.
+                    _uiState.update { it.copy(loading = false, failed = true) }
                 }
         }
     }

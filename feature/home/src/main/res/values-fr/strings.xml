@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_live">Direct</string>
+    <string name="tab_movies">Films</string>
+    <string name="tab_series">Séries</string>
+
+    <string name="kind_live">En direct</string>
+    <string name="kind_catch_up">Replay</string>
+    <string name="kind_movie">Film</string>
+    <string name="kind_series">Série</string>
+
+    <string name="home_loading">Chargement…</string>
+    <string name="home_empty">Aucun contenu ici pour l\'instant.</string>
+    <string name="home_error">Impossible de charger le contenu.</string>
+    <string name="home_retry">Réessayer</string>
+</resources>

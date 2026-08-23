@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -31,19 +33,26 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Brand
+import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxFormColors
+import com.maurimax.core.designsystem.Wordmark
 import com.maurimax.core.designsystem.Spacing
 
 @Composable
 fun LoginScreenTv(
     viewModel: LoginViewModel,
+    language: String,
+    onLanguageChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LoginScreenTv(
         state = state,
+        language = language,
+        onLanguageChange = onLanguageChange,
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
@@ -54,6 +63,8 @@ fun LoginScreenTv(
 @Composable
 fun LoginScreenTv(
     state: LoginUiState,
+    language: String = com.maurimax.core.data.AppLocale.ARABIC,
+    onLanguageChange: (String) -> Unit = {},
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -76,20 +87,21 @@ fun LoginScreenTv(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.Center,
         ) {
+            Wordmark(fontSize = 46.sp)
             Text(
-                text = "MAURIMAX",
-                color = Brand.Accent,
-                fontWeight = FontWeight.Black,
-                fontSize = 52.sp,
-                letterSpacing = 8.sp,
-            )
-            Text(
-                text = "Sign in with the username and password from your subscription.",
+                text = stringResource(R.string.auth_subtitle),
                 color = Brand.TextSecondary,
                 fontSize = 17.sp,
+                lineHeight = 25.sp,
                 modifier = Modifier
                     .padding(top = Spacing.md)
-                    .width(380.dp),
+                    .width(400.dp),
+            )
+            LanguageSwitch(
+                current = language,
+                onSelect = onLanguageChange,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(top = Spacing.lg),
             )
         }
 
@@ -103,7 +115,7 @@ fun LoginScreenTv(
                 OutlinedTextField(
                     value = state.username,
                     onValueChange = onUsernameChange,
-                    label = { Text("Username") },
+                    label = { Text(stringResource(R.string.auth_username)) },
                     singleLine = true,
                     enabled = !state.signingIn,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -116,7 +128,7 @@ fun LoginScreenTv(
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = onPasswordChange,
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.auth_password)) },
                     singleLine = true,
                     enabled = !state.signingIn,
                     visualTransformation = PasswordVisualTransformation(),
@@ -131,11 +143,12 @@ fun LoginScreenTv(
                         .padding(top = Spacing.md),
                 )
 
-                if (state.error != null) {
+                state.error?.let { failure ->
                     Text(
-                        text = state.error,
-                        color = Brand.AccentBright,
+                        text = failure.message(),
+                        color = Brand.OrangeLit,
                         fontSize = 16.sp,
+                        lineHeight = 23.sp,
                         modifier = Modifier.padding(top = Spacing.md),
                     )
                 }
@@ -143,19 +156,23 @@ fun LoginScreenTv(
                 Button(
                     onClick = onSubmit,
                     enabled = state.canSubmit,
+                    shape = RoundedCornerShape(Corners.control),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Brand.Accent,
+                        containerColor = Brand.Orange,
                         contentColor = Brand.TextPrimary,
                         disabledContainerColor = Brand.SurfaceRaised,
-                        disabledContentColor = Brand.TextSecondary,
+                        disabledContentColor = Brand.TextTertiary,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(56.dp)
                         .padding(top = Spacing.lg),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (state.signingIn) "Signing in…" else "Sign in",
+                            text = stringResource(
+                                if (state.signingIn) R.string.auth_signing_in else R.string.auth_sign_in,
+                            ),
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 17.sp,
                         )
@@ -170,9 +187,9 @@ fun LoginScreenTv(
 private fun tvFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Brand.TextPrimary,
     unfocusedTextColor = Brand.TextPrimary,
-    focusedBorderColor = Brand.Accent,
+    focusedBorderColor = Brand.Orange,
     unfocusedBorderColor = Brand.Outline,
-    focusedLabelColor = Brand.Accent,
+    focusedLabelColor = Brand.Orange,
     unfocusedLabelColor = Brand.TextSecondary,
-    cursorColor = Brand.Accent,
+    cursorColor = Brand.Orange,
 )

@@ -5,8 +5,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
 private val TvColors = darkColorScheme(
-    primary = Brand.Accent,
-    onPrimary = Brand.TextPrimary,
+    primary = Brand.Orange,
+    onPrimary = Color_White,
+    primaryContainer = Brand.Violet,
+    onPrimaryContainer = Brand.TextPrimary,
+    secondary = Brand.VioletLit,
+    onSecondary = Brand.TextPrimary,
     background = Brand.Ink,
     onBackground = Brand.TextPrimary,
     surface = Brand.Surface,
@@ -18,8 +22,5 @@ private val TvColors = darkColorScheme(
 
 @Composable
 fun MaurimaxTvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = TvColors,
-        content = content,
-    )
+    MaterialTheme(colorScheme = TvColors, content = content)
 }

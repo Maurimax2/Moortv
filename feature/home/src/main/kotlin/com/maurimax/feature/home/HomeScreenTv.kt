@@ -35,15 +35,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Glow
 import androidx.tv.material3.Text
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.Wordmark
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
@@ -102,19 +105,18 @@ fun HomeScreenTv(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.loading -> Text(
-                        text = "Loading ${state.tab.label.lowercase()}…",
+                        text = stringResource(R.string.home_loading),
                         color = Brand.TextSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                    state.error != null -> TvErrorPanel(
-                        message = state.error,
+                    state.failed -> TvErrorPanel(
                         onRetry = onRetry,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
                     state.isEmpty -> Text(
-                        text = "Nothing in ${state.tab.label.lowercase()} yet.",
+                        text = stringResource(R.string.home_empty),
                         color = Brand.TextSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -147,7 +149,7 @@ private fun Backdrop(item: MediaItem) {
             )
         }
         // Two scrims: one from the left for the copy, one from the bottom for the rows.
-        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrimHorizontal))
+        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrimSide))
         Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrim))
     }
 }
@@ -163,14 +165,7 @@ private fun TvTabBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,
     ) {
-        Text(
-            text = "MAURIMAX",
-            color = Brand.Accent,
-            fontWeight = FontWeight.Black,
-            fontSize = 22.sp,
-            letterSpacing = 5.sp,
-            modifier = Modifier.padding(end = Spacing.lg),
-        )
+        Wordmark(fontSize = 20.sp, modifier = Modifier.padding(end = Spacing.lg))
 
         CatalogTab.entries.forEach { entry ->
             var focused by remember { mutableStateOf(false) }
@@ -182,16 +177,18 @@ private fun TvTabBar(
                     containerColor = Color.Transparent,
                     focusedContainerColor = Brand.SurfaceRaised,
                 ),
+                shape = CardDefaults.shape(RoundedCornerShape(Corners.control)),
                 border = CardDefaults.border(
                     focusedBorder = Border(
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Brand.Accent),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, Brand.Orange),
+                        shape = RoundedCornerShape(Corners.control),
                     ),
                 ),
                 scale = CardDefaults.scale(focusedScale = 1.02f),
                 modifier = Modifier.onFocusChanged { focused = it.isFocused },
             ) {
                 Text(
-                    text = entry.label,
+                    text = stringResource(entry.labelRes),
                     color = when {
                         focused || selected -> Brand.TextPrimary
                         else -> Brand.TextTertiary
@@ -264,9 +261,10 @@ private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = item.genre,
-            color = Brand.TextSecondary,
+            text = heroLabel(item),
+            color = Brand.OrangeLit,
             fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = Spacing.xs),
         )
         if (item.description.isNotBlank()) {
@@ -344,8 +342,12 @@ private fun TvTile(
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = androidx.compose.foundation.BorderStroke(2.dp, Brand.TextPrimary),
+                border = androidx.compose.foundation.BorderStroke(3.dp, Brand.Orange),
+                shape = RoundedCornerShape(Corners.card),
             ),
+        ),
+        glow = CardDefaults.glow(
+            focusedGlow = Glow(elevationColor = Brand.FocusGlow, elevation = 12.dp),
         ),
         modifier = modifier
             .width(tileWidth)
@@ -365,20 +367,31 @@ private fun TvTile(
 }
 
 @Composable
-private fun TvErrorPanel(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun TvErrorPanel(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
         modifier = modifier,
     ) {
-        Text(text = message, color = Brand.TextSecondary, fontSize = 17.sp)
+        Text(
+            text = stringResource(R.string.home_error),
+            color = Brand.TextSecondary,
+            fontSize = 17.sp,
+        )
         Card(onClick = onRetry, scale = CardDefaults.scale(focusedScale = 1.05f)) {
             Text(
-                text = "Try again",
+                text = stringResource(R.string.home_retry),
                 color = Brand.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             )
         }
     }
+}
+
+/** Rating first on TV when the panel has one; it is the strongest signal there. */
+@Composable
+private fun heroLabel(item: MediaItem): String {
+    val kind = stringResource(item.kind.labelRes)
+    return if (item.rating.isBlank()) kind else "★ ${item.rating}  ·  $kind"
 }

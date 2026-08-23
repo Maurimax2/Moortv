@@ -37,10 +37,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.Wordmark
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
@@ -81,18 +83,17 @@ fun HomeScreenMobile(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.loading -> CircularProgressIndicator(
-                        color = Brand.Accent,
+                        color = Brand.Orange,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                    state.error != null -> ErrorPanel(
-                        message = state.error,
+                    state.failed -> ErrorPanel(
                         onRetry = onRetry,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
                     state.isEmpty -> Text(
-                        text = "Nothing in ${state.tab.label.lowercase()} yet.",
+                        text = stringResource(R.string.home_empty),
                         color = Brand.TextSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -111,12 +112,8 @@ private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
             .background(Brand.Ink)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
     ) {
-        Text(
-            text = "MAURIMAX",
-            color = Brand.Accent,
-            fontWeight = FontWeight.Black,
-            fontSize = 21.sp,
-            letterSpacing = 4.sp,
+        Wordmark(
+            fontSize = 20.sp,
             modifier = Modifier.padding(start = Spacing.md, top = Spacing.md, bottom = Spacing.sm),
         )
 
@@ -126,7 +123,7 @@ private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
         ) {
             CatalogTab.entries.forEach { entry ->
                 TabLabel(
-                    label = entry.label,
+                    label = stringResource(entry.labelRes),
                     selected = entry == tab,
                     onClick = { onTabSelect(entry) },
                 )
@@ -159,7 +156,7 @@ private fun TabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
                 modifier = Modifier
                     .height(2.dp)
                     .width(24.dp)
-                    .background(Brand.Accent, RoundedCornerShape(2.dp)),
+                    .background(Brand.Orange, RoundedCornerShape(2.dp)),
             )
         }
     }
@@ -235,7 +232,7 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
         if (item.progress > 0f) {
             LinearProgressIndicator(
                 progress = { item.progress },
-                color = Brand.Accent,
+                color = Brand.Orange,
                 trackColor = Brand.Outline,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -251,7 +248,7 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = item.genre,
+            text = itemLabel(item),
             color = Brand.TextTertiary,
             fontSize = 11.sp,
             maxLines = 1,
@@ -260,21 +257,33 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ErrorPanel(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun ErrorPanel(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
         modifier = modifier.padding(Spacing.lg),
     ) {
-        Text(text = message, color = Brand.TextSecondary, fontSize = 15.sp)
+        Text(
+            text = stringResource(R.string.home_error),
+            color = Brand.TextSecondary,
+            fontSize = 15.sp,
+        )
         Button(
             onClick = onRetry,
+            shape = RoundedCornerShape(Corners.control),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Brand.Accent,
+                containerColor = Brand.Orange,
                 contentColor = Brand.TextPrimary,
             ),
         ) {
-            Text("Try again", fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.home_retry), fontWeight = FontWeight.SemiBold)
         }
     }
+}
+
+/** A rating when the panel supplies one, otherwise what the tile is. */
+@Composable
+private fun itemLabel(item: MediaItem): String {
+    val kind = stringResource(item.kind.labelRes)
+    return if (item.rating.isBlank()) kind else "$kind · ★ ${item.rating}"
 }

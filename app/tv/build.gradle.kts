@@ -14,6 +14,12 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        // Arabic ships as the default (values/), French as the translation.
+        // Listing them keeps the set explicit and stops stray library locales
+        // from being advertised as supported when they are not translated.
+        @Suppress("DEPRECATION")
+        resourceConfigurations += listOf("ar", "fr")
     }
 
     buildTypes {

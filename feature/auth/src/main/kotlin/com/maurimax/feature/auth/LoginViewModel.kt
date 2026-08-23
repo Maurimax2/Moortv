@@ -21,7 +21,7 @@ data class LoginUiState(
     val username: String = "",
     val password: String = "",
     val signingIn: Boolean = false,
-    val error: String? = null,
+    val error: LoginFailure? = null,
     val account: Account? = null,
     val credentials: Credentials? = null,
 ) {
@@ -73,7 +73,7 @@ class LoginViewModel(
                 }
 
                 is LoginResult.Failure -> _uiState.update {
-                    it.copy(signingIn = false, error = result.reason.message())
+                    it.copy(signingIn = false, error = result.reason)
                 }
             }
         }
@@ -89,19 +89,4 @@ class LoginViewModel(
             initializer { LoginViewModel(Graph.authRepository) }
         }
     }
-}
-
-/**
- * Customer-facing wording. A customer cannot fix a server outage, so the
- * unreachable case says what to do rather than showing them a stack trace.
- */
-internal fun LoginFailure.message(): String = when (this) {
-    LoginFailure.BadCredentials ->
-        "That username and password did not match. Check them and try again."
-
-    is LoginFailure.Inactive ->
-        "This account is $status. Contact support to renew it."
-
-    is LoginFailure.Unreachable ->
-        "Could not reach MAURIMAX. Check your internet connection and try again."
 }

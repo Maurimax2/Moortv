@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MAURIMAX</string>
+    <!-- A brand name is not translated, so this has no per-locale variants. -->
+    <string name="app_name" translatable="false">MAURIMAX</string>
 </resources>
