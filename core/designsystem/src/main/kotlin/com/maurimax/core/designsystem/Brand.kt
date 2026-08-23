@@ -44,9 +44,15 @@ object Brand {
     /** Under hero artwork, so overlaid copy holds contrast at any brightness. */
     val HeroScrim = Brush.verticalGradient(
         0f to Color.Transparent,
-        0.42f to Color(0x730A0610),
+        0.34f to Color(0x660A0610),
+        // Reaches full ink at the same height the artwork stops, so the two
+        // meet invisibly instead of leaving a band across the screen.
+        HERO_ART_FRACTION to Ink,
         1f to Ink,
     )
+
+    /** How much of the screen the hero artwork covers. Shared so the scrim can align to it. */
+    const val HERO_ART_FRACTION = 0.68f
 
     /**
      * Side scrim for TV, where hero copy sits beside the art rather than under

@@ -145,7 +145,7 @@ private fun Backdrop(item: MediaItem) {
                 crop = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.62f),
+                    .fillMaxHeight(Brand.HERO_ART_FRACTION),
             )
         }
         // Two scrims: one from the left for the copy, one from the bottom for the rows.
@@ -220,7 +220,7 @@ private fun TvCatalog(
                 item = hero,
                 modifier = Modifier.padding(
                     start = Spacing.tvOverscan,
-                    top = Spacing.md,
+                    top = Spacing.sm,
                     end = Spacing.tvOverscan,
                 ),
             )
@@ -231,7 +231,7 @@ private fun TvCatalog(
             contentPadding = PaddingValues(
                 start = Spacing.tvOverscan,
                 end = Spacing.tvOverscan,
-                top = Spacing.md,
+                top = Spacing.sm,
                 bottom = Spacing.xl,
             ),
         ) {
