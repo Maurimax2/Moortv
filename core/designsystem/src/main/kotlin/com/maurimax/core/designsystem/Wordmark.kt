@@ -1,38 +1,66 @@
 package com.maurimax.core.designsystem
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The MAURIMAX wordmark.
+ * The MAURIMAX lockup: the mark beside the wordmark.
  *
- * A brand name is not translated and not mirrored, so this forces left-to-right
- * text direction — without it the Latin letters reorder inside an Arabic layout.
- * BasicText is used so it needs no Material theme and reads the same on phone
- * and TV.
+ * Two details make it survive an Arabic build. The name is forced
+ * left-to-right, because a brand is not mirrored and without it the Latin
+ * letters reorder inside an RTL layout. And the row is laid out explicitly
+ * rather than inheriting direction, so the mark stays on the same side of the
+ * name in both languages — a logo that flips is a different logo.
  */
 @Composable
-fun Wordmark(
-    fontSize: TextUnit = 22.sp,
+fun BrandLockup(
+    fontSize: TextUnit = 20.sp,
+    markHeight: Dp = 28.dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
-        BasicText(
-            text = "MAURIMAX",
-            style = TextStyle(
-                color = Brand.TextPrimary,
-                fontSize = fontSize,
-                fontWeight = FontWeight.Black,
-                letterSpacing = fontSize * 0.18f,
-                textDirection = TextDirection.Ltr,
-            ),
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(markHeight * 0.32f),
+        modifier = modifier,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_mark),
+            contentDescription = null,
+            modifier = Modifier.height(markHeight),
         )
+        Wordmark(fontSize = fontSize)
     }
+}
+
+/** The name alone, for places too tight for the mark. */
+@Composable
+fun Wordmark(
+    fontSize: TextUnit = 20.sp,
+    modifier: Modifier = Modifier,
+) {
+    BasicText(
+        text = "MAURIMAX",
+        style = TextStyle(
+            color = Brand.TextPrimary,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            letterSpacing = fontSize * 0.16f,
+            textDirection = TextDirection.Ltr,
+        ),
+        modifier = modifier,
+    )
 }

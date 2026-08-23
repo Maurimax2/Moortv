@@ -46,7 +46,7 @@ import androidx.tv.material3.Text
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
-import com.maurimax.core.designsystem.Wordmark
+import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
@@ -165,7 +165,7 @@ private fun TvTabBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,
     ) {
-        Wordmark(fontSize = 20.sp, modifier = Modifier.padding(end = Spacing.lg))
+        BrandLockup(fontSize = 18.sp, markHeight = 26.dp, modifier = Modifier.padding(end = Spacing.lg))
 
         CatalogTab.entries.forEach { entry ->
             var focused by remember { mutableStateOf(false) }

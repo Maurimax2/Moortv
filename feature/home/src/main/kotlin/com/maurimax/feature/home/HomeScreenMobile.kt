@@ -42,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
-import com.maurimax.core.designsystem.Wordmark
+import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
@@ -112,8 +112,9 @@ private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
             .background(Brand.Ink)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
     ) {
-        Wordmark(
-            fontSize = 20.sp,
+        BrandLockup(
+            fontSize = 18.sp,
+            markHeight = 26.dp,
             modifier = Modifier.padding(start = Spacing.md, top = Spacing.md, bottom = Spacing.sm),
         )
 

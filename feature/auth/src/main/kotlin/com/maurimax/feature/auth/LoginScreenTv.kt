@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxFormColors
-import com.maurimax.core.designsystem.Wordmark
+import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 
 @Composable
@@ -87,7 +87,7 @@ fun LoginScreenTv(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.Center,
         ) {
-            Wordmark(fontSize = 46.sp)
+            BrandLockup(fontSize = 40.sp, markHeight = 62.dp)
             Text(
                 text = stringResource(R.string.auth_subtitle),
                 color = Brand.TextSecondary,
