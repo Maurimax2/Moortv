@@ -27,17 +27,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: ./gradlew test --stacktrace
+      - name: Test and assemble
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew test :app:mobile:assembleDebug :app:tv:assembleDebug \
+            --console=plain 2>&1 | tee "$RUNNER_TEMP/gradle.log"
 
-      - name: Build mobile APK
-        run: ./gradlew :app:mobile:assembleDebug --stacktrace
+      # Gradle buries compiler errors under a few hundred lines of stack trace.
+      # This runs last on failure, so the errors are the final thing in the log.
+      - name: Compiler errors
+        if: failure()
+        shell: bash
+        run: |
+          echo "──────── compile errors ────────"
+          grep -E "^(e: |w: .*: error:)" "$RUNNER_TEMP/gradle.log" | head -60 || echo "(none matched)"
+          echo "──────── what went wrong ────────"
+          sed -n '/^\* What went wrong:/,/^\* Try:/p' "$RUNNER_TEMP/gradle.log" | head -40 || true
 
-      - name: Build TV APK
-        run: ./gradlew :app:tv:assembleDebug --stacktrace
-
-      # These two artifacts are the installable app. Download from the run summary,
-      # then sideload with `adb install -r <file>.apk`.
       - name: Upload mobile APK
         uses: actions/upload-artifact@v4
         with:
