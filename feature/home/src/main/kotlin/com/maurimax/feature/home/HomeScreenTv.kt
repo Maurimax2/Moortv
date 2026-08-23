@@ -2,11 +2,14 @@
 
 package com.maurimax.feature.home
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,25 +18,34 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
+import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 
@@ -44,134 +56,323 @@ fun HomeScreenTv(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeScreenTv(state = state, onItemClick = onItemClick, modifier = modifier)
+    HomeScreenTv(
+        state = state,
+        onTabSelect = viewModel::selectTab,
+        onRetry = viewModel::retry,
+        onItemClick = onItemClick,
+        modifier = modifier,
+    )
 }
 
 @Composable
 fun HomeScreenTv(
     state: HomeUiState,
+    onTabSelect: (CatalogTab) -> Unit = {},
+    onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // The hero follows focus. On a TV the remote is the pointer, so what is
+    // focused is what the customer is considering — showing it large is the
+    // whole difference between a grid of thumbnails and a storefront.
+    var spotlight by remember(state.tab) { mutableStateOf<MediaItem?>(null) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Brand.Ink),
     ) {
-        when (state) {
-            HomeUiState.Loading -> Text(
-                text = "Loading…",
-                color = Brand.TextSecondary,
-                modifier = Modifier.align(Alignment.Center),
-            )
-
-            is HomeUiState.Error -> Text(
-                text = state.message,
-                color = Brand.TextSecondary,
-                modifier = Modifier.align(Alignment.Center),
-            )
-
-            is HomeUiState.Ready -> TvCatalog(rows = state.rows, onItemClick = onItemClick)
+        val hero = spotlight ?: state.rows.firstOrNull()?.items?.firstOrNull()
+        if (hero != null) {
+            Backdrop(item = hero)
         }
-    }
-}
 
-@Composable
-private fun TvCatalog(rows: List<ContentRow>, onItemClick: (MediaItem) -> Unit) {
-    // The first card of the first row takes focus on launch, so the remote has
-    // somewhere to start. Without this a TV app opens with nothing focusable.
-    val firstCard = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { firstCard.requestFocus() } }
+        Column(modifier = Modifier.fillMaxSize()) {
+            TvTabBar(
+                tab = state.tab,
+                onTabSelect = onTabSelect,
+                modifier = Modifier.padding(
+                    start = Spacing.tvOverscan,
+                    top = Spacing.lg,
+                    end = Spacing.tvOverscan,
+                ),
+            )
 
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        contentPadding = PaddingValues(
-            start = Spacing.tvOverscan,
-            end = Spacing.tvOverscan,
-            top = Spacing.tvOverscan,
-            bottom = Spacing.xl,
-        ),
-    ) {
-        item { TvHero(rows.firstOrNull()?.items?.firstOrNull()) }
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    state.loading -> Text(
+                        text = "Loading ${state.tab.label.lowercase()}…",
+                        color = Brand.TextSecondary,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
 
-        itemsIndexed(rows) { rowIndex, row ->
-            Column {
-                Text(
-                    text = row.title,
-                    color = Brand.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 20.sp,
-                    modifier = Modifier.padding(bottom = Spacing.sm),
-                )
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                    itemsIndexed(row.items) { itemIndex, item ->
-                        TvPoster(
-                            item = item,
-                            onClick = { onItemClick(item) },
-                            modifier = if (rowIndex == 0 && itemIndex == 0) {
-                                Modifier.focusRequester(firstCard)
-                            } else {
-                                Modifier
-                            },
-                        )
-                    }
+                    state.error != null -> TvErrorPanel(
+                        message = state.error,
+                        onRetry = onRetry,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+
+                    state.isEmpty -> Text(
+                        text = "Nothing in ${state.tab.label.lowercase()} yet.",
+                        color = Brand.TextSecondary,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+
+                    else -> TvCatalog(
+                        state = state,
+                        hero = hero,
+                        onFocus = { spotlight = it },
+                        onItemClick = onItemClick,
+                    )
                 }
             }
         }
     }
 }
 
+/** Full-bleed art for the focused title, washed out so rows stay readable over it. */
 @Composable
-private fun TvHero(item: MediaItem?) {
-    if (item == null) return
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp)
-            .background(artworkBrush(item.artworkTint)),
+private fun Backdrop(item: MediaItem) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Crossfade(targetState = item, label = "backdrop") { current ->
+            Artwork(
+                url = current.artworkUrl,
+                title = "",
+                fallbackTint = current.artworkTint,
+                crop = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.62f),
+            )
+        }
+        // Two scrims: one from the left for the copy, one from the bottom for the rows.
+        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrimHorizontal))
+        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrim))
+    }
+}
+
+@Composable
+private fun TvTabBar(
+    tab: CatalogTab,
+    onTabSelect: (CatalogTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier,
     ) {
-        Column(modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.lg)) {
-            Text(
-                text = "MAURIMAX",
-                color = Brand.Accent,
-                fontWeight = FontWeight.Black,
-                fontSize = 16.sp,
-                letterSpacing = 4.sp,
+        Text(
+            text = "MAURIMAX",
+            color = Brand.Accent,
+            fontWeight = FontWeight.Black,
+            fontSize = 22.sp,
+            letterSpacing = 5.sp,
+            modifier = Modifier.padding(end = Spacing.lg),
+        )
+
+        CatalogTab.entries.forEach { entry ->
+            var focused by remember { mutableStateOf(false) }
+            val selected = entry == tab
+
+            Card(
+                onClick = { onTabSelect(entry) },
+                colors = CardDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedContainerColor = Brand.SurfaceRaised,
+                ),
+                border = CardDefaults.border(
+                    focusedBorder = Border(
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Brand.Accent),
+                    ),
+                ),
+                scale = CardDefaults.scale(focusedScale = 1.02f),
+                modifier = Modifier.onFocusChanged { focused = it.isFocused },
+            ) {
+                Text(
+                    text = entry.label,
+                    color = when {
+                        focused || selected -> Brand.TextPrimary
+                        else -> Brand.TextTertiary
+                    },
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    fontSize = 17.sp,
+                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvCatalog(
+    state: HomeUiState,
+    hero: MediaItem?,
+    onFocus: (MediaItem) -> Unit,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    val firstCard = remember(state.tab) { FocusRequester() }
+    LaunchedEffect(state.tab, state.rows) {
+        if (state.rows.isNotEmpty()) runCatching { firstCard.requestFocus() }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (hero != null) {
+            HeroCopy(
+                item = hero,
+                modifier = Modifier.padding(
+                    start = Spacing.tvOverscan,
+                    top = Spacing.lg,
+                    end = Spacing.tvOverscan,
+                ),
             )
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            contentPadding = PaddingValues(
+                start = Spacing.tvOverscan,
+                end = Spacing.tvOverscan,
+                top = Spacing.lg,
+                bottom = Spacing.xl,
+            ),
+        ) {
+            itemsIndexed(state.rows, key = { _, row -> row.title }) { rowIndex, row ->
+                TvRow(
+                    row = row,
+                    tab = state.tab,
+                    firstCard = firstCard.takeIf { rowIndex == 0 },
+                    onFocus = onFocus,
+                    onItemClick = onItemClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.width(560.dp)) {
+        Text(
+            text = item.title,
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+            fontSize = 42.sp,
+            lineHeight = 46.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = item.genre,
+            color = Brand.TextSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.padding(top = Spacing.xs),
+        )
+        if (item.description.isNotBlank()) {
             Text(
-                text = item.title,
-                color = Color.White,
-                fontWeight = FontWeight.Black,
-                fontSize = 44.sp,
-            )
-            Text(
-                text = "${item.year} · ${item.genre} · ${item.durationMinutes} min",
+                text = item.description,
                 color = Brand.TextSecondary,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = Spacing.sm),
             )
         }
     }
 }
 
 @Composable
-private fun TvPoster(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun TvRow(
+    row: ContentRow,
+    tab: CatalogTab,
+    firstCard: FocusRequester?,
+    onFocus: (MediaItem) -> Unit,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            text = row.title,
+            color = Brand.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            itemsIndexed(row.items, key = { _, item -> item.id }) { index, item ->
+                TvTile(
+                    item = item,
+                    tab = tab,
+                    onFocus = onFocus,
+                    onClick = { onItemClick(item) },
+                    modifier = if (index == 0 && firstCard != null) {
+                        Modifier.focusRequester(firstCard)
+                    } else {
+                        Modifier
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvTile(
+    item: MediaItem,
+    tab: CatalogTab,
+    onFocus: (MediaItem) -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val portrait = tab.usesPortraitArt
+    val tileWidth = if (portrait) 150.dp else 210.dp
+    val tileHeight = if (portrait) 225.dp else 118.dp
+
     Card(
         onClick = onClick,
-        scale = CardDefaults.scale(focusedScale = 1.1f),
-        modifier = modifier.width(200.dp),
+        scale = CardDefaults.scale(focusedScale = 1.08f),
+        shape = CardDefaults.shape(RoundedCornerShape(Corners.card)),
+        colors = CardDefaults.colors(
+            containerColor = Brand.SurfaceRaised,
+            focusedContainerColor = Brand.SurfaceRaised,
+        ),
+        border = CardDefaults.border(
+            focusedBorder = Border(
+                border = androidx.compose.foundation.BorderStroke(2.dp, Brand.TextPrimary),
+            ),
+        ),
+        modifier = modifier
+            .width(tileWidth)
+            .onFocusChanged { if (it.isFocused) onFocus(item) },
     ) {
-        Box(
+        Artwork(
+            url = item.artworkUrl,
+            title = item.title,
+            fallbackTint = item.artworkTint,
+            crop = portrait,
+            fallbackTextSize = 15.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
-                .background(artworkBrush(item.artworkTint)),
-        ) {
+                .height(tileHeight),
+        )
+    }
+}
+
+@Composable
+private fun TvErrorPanel(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        modifier = modifier,
+    ) {
+        Text(text = message, color = Brand.TextSecondary, fontSize = 17.sp)
+        Card(onClick = onRetry, scale = CardDefaults.scale(focusedScale = 1.05f)) {
             Text(
-                text = item.title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.sm),
+                text = "Try again",
+                color = Brand.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             )
         }
     }

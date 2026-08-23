@@ -16,6 +16,24 @@ data class MediaItem(
     val artworkUrl: String = "",
 )
 
+/**
+ * The three things the portal serves. Each is a top-level destination, because
+ * a customer looking for a film is not browsing live channels.
+ */
+enum class CatalogTab(val label: String) {
+    LIVE("Live TV"),
+    MOVIES("Movies"),
+    SERIES("Series"),
+    ;
+
+    /**
+     * Live logos are wide marks on transparent backgrounds; film and series art
+     * is portrait key art. Rendering one as the other looks broken, so the tab
+     * carries its own shape.
+     */
+    val usesPortraitArt: Boolean get() = this != LIVE
+}
+
 /** A titled horizontal row of titles, e.g. "Continue watching". */
 data class ContentRow(
     val title: String,

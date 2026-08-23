@@ -1,5 +1,6 @@
 package com.maurimax.core.data
 
+import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.Category
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
@@ -16,9 +17,7 @@ import com.maurimax.core.network.dto.VodStreamDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 
 /**
  * Reads the catalog from the portal for the signed-in customer.
@@ -36,9 +35,30 @@ class XtreamContentRepository(
     private val maxItemsPerRow: Int = 20,
 ) : ContentRepository {
 
-    override fun homeRows(): Flow<List<ContentRow>> = flow {
-        emit(loadHomeRows())
-    }.flowOn(Dispatchers.IO)
+    override suspend fun rows(tab: CatalogTab): List<ContentRow> = withContext(Dispatchers.IO) {
+        when (tab) {
+            CatalogTab.LIVE -> sections(
+                categories = { liveCategories() },
+                items = { liveChannels() },
+                categoryOf = LiveChannel::categoryId,
+                toMediaItem = LiveChannel::toMediaItem,
+            )
+
+            CatalogTab.MOVIES -> sections(
+                categories = { movieCategories() },
+                items = { movies() },
+                categoryOf = Movie::categoryId,
+                toMediaItem = Movie::toMediaItem,
+            )
+
+            CatalogTab.SERIES -> sections(
+                categories = { seriesCategories() },
+                items = { series() },
+                categoryOf = Series::categoryId,
+                toMediaItem = Series::toMediaItem,
+            )
+        }
+    }
 
     suspend fun liveCategories(): List<Category> =
         api.liveCategories(credentials.username, credentials.password).map(CategoryDto::toModel)
@@ -47,9 +67,15 @@ class XtreamContentRepository(
         api.liveStreams(credentials.username, credentials.password, categoryId)
             .map(LiveStreamDto::toModel)
 
+    suspend fun movieCategories(): List<Category> =
+        api.vodCategories(credentials.username, credentials.password).map(CategoryDto::toModel)
+
     suspend fun movies(categoryId: String? = null): List<Movie> =
         api.vodStreams(credentials.username, credentials.password, categoryId)
             .map(VodStreamDto::toModel)
+
+    suspend fun seriesCategories(): List<Category> =
+        api.seriesCategories(credentials.username, credentials.password).map(CategoryDto::toModel)
 
     suspend fun series(categoryId: String? = null): List<Series> =
         api.series(credentials.username, credentials.password, categoryId)
@@ -62,23 +88,32 @@ class XtreamContentRepository(
     fun streamUrl(movie: Movie): String =
         urls.movie(credentials.username, credentials.password, movie.streamId, movie.containerExtension)
 
-    private suspend fun loadHomeRows(): List<ContentRow> = coroutineScope {
-        val categoriesJob = async { liveCategories() }
-        val channelsJob = async { liveChannels() }
+    /**
+     * Categories and items arrive as two flat lists, so rows are assembled here
+     * rather than with a request per category. Both fetches run concurrently:
+     * on a large panel the item list is the slow one.
+     */
+    private suspend fun <T> sections(
+        categories: suspend () -> List<Category>,
+        items: suspend () -> List<T>,
+        categoryOf: (T) -> String,
+        toMediaItem: (T) -> MediaItem,
+    ): List<ContentRow> = coroutineScope {
+        val categoriesJob = async { categories() }
+        val itemsJob = async { items() }
 
-        val categories = categoriesJob.await()
-        val byCategory = channelsJob.await().groupBy { it.categoryId }
+        val grouped = itemsJob.await().groupBy(categoryOf)
 
-        categories
+        categoriesJob.await()
             .asSequence()
             .mapNotNull { category ->
-                val channels = byCategory[category.id].orEmpty()
-                if (channels.isEmpty()) {
+                val entries = grouped[category.id].orEmpty()
+                if (entries.isEmpty()) {
                     null
                 } else {
                     ContentRow(
                         title = category.name,
-                        items = channels.take(maxItemsPerRow).map(LiveChannel::toMediaItem),
+                        items = entries.take(maxItemsPerRow).map(toMediaItem),
                     )
                 }
             }
@@ -115,6 +150,28 @@ internal fun SeriesDto.toModel() = Series(
     categoryId = categoryId,
     plot = plot,
     rating = rating,
+)
+
+internal fun Movie.toMediaItem() = MediaItem(
+    id = "movie-$streamId",
+    title = name,
+    year = 0,
+    genre = rating.takeIf { it.isNotBlank() }?.let { "★ $it" } ?: "Film",
+    description = "",
+    artworkTint = tintFor(name),
+    durationMinutes = 0,
+    artworkUrl = posterUrl,
+)
+
+internal fun Series.toMediaItem() = MediaItem(
+    id = "series-$seriesId",
+    title = name,
+    year = 0,
+    genre = rating.takeIf { it.isNotBlank() }?.let { "★ $it" } ?: "Series",
+    description = plot,
+    artworkTint = tintFor(name),
+    durationMinutes = 0,
+    artworkUrl = posterUrl,
 )
 
 /**

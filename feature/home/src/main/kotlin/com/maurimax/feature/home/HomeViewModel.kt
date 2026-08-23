@@ -7,49 +7,81 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.ContentRepository
 import com.maurimax.core.data.Graph
+import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed interface HomeUiState {
-    data object Loading : HomeUiState
-    data class Ready(val rows: List<ContentRow>) : HomeUiState
-    data class Error(val message: String) : HomeUiState
+data class HomeUiState(
+    val tab: CatalogTab = CatalogTab.LIVE,
+    val rows: List<ContentRow> = emptyList(),
+    val loading: Boolean = true,
+    val error: String? = null,
+) {
+    val isEmpty: Boolean get() = !loading && error == null && rows.isEmpty()
 }
 
 /**
  * Shared by both form factors. `HomeScreenMobile` and `HomeScreenTv` are two
- * renderings of the same [HomeUiState] — there is no phone logic and no TV logic,
- * only phone layout and TV layout.
+ * renderings of the same [HomeUiState] — there is no phone logic and no TV
+ * logic, only phone layout and TV layout.
  */
 class HomeViewModel(
     private val repository: ContentRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
+    private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    /**
+     * A panel's full catalogue is a slow fetch, so a tab already visited is
+     * restored instantly instead of refetched on every switch.
+     */
+    private val cache = mutableMapOf<CatalogTab, List<ContentRow>>()
+
     init {
-        refresh()
+        load(CatalogTab.LIVE)
     }
 
-    fun refresh() {
+    fun selectTab(tab: CatalogTab) {
+        if (tab == _uiState.value.tab && _uiState.value.error == null) return
+
+        val cached = cache[tab]
+        if (cached != null) {
+            _uiState.value = HomeUiState(tab = tab, rows = cached, loading = false)
+        } else {
+            load(tab)
+        }
+    }
+
+    fun retry() = load(_uiState.value.tab)
+
+    private fun load(tab: CatalogTab) {
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
-            repository.homeRows()
-                .catch { error ->
-                    _uiState.value = HomeUiState.Error(error.message ?: "Could not load the catalog")
+            _uiState.value = HomeUiState(tab = tab, loading = true)
+
+            runCatching { repository.rows(tab) }
+                .onSuccess { rows ->
+                    cache[tab] = rows
+                    _uiState.update { it.copy(rows = rows, loading = false, error = null) }
                 }
-                .collect { rows -> _uiState.value = HomeUiState.Ready(rows) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            error = error.message ?: "Could not load ${tab.label.lowercase()}",
+                        )
+                    }
+                }
         }
     }
 
     companion object {
-        /** Builds a home screen bound to the signed-in customer's catalog. */
+        /** Builds a home screen bound to the signed-in customer's catalogue. */
         fun factory(credentials: Credentials): ViewModelProvider.Factory = viewModelFactory {
             initializer { HomeViewModel(Graph.contentRepository(credentials)) }
         }

@@ -95,7 +95,7 @@ UI (Compose)  →  ViewModel (StateFlow<UiState>)  →  Repository  →  { Netwo
 | **M3** | TV shell | D-pad focus traversal, hero carousel + content rows, immersive detail screen. Tested on the TV emulator profile. |
 | **M4** | Player | Media3 integration, HLS/DASH, mobile touch controls + TV D-pad controls, resume position, PiP (mobile), background audio behavior. |
 | **M5** | Real data | ✅ Xtream client, sign-in, live categories and channels on the home screen. Still to come: Room caching, Paging 3, offline states. |
-| **M6** | Catalog depth | Films and series browsing, EPG from XMLTV, search, favourites. |
+| **M6** | Catalog depth | ✅ Films and series browsing. Still to come: search, favourites, series episode lists. No EPG — the portal does not serve one. |
 | **M7** | Offline + DRM | Media3 downloads (mobile), Widevine if the catalog needs it. |
 | **M8** | Release | R8/ProGuard, signing config, Play Console listing for **both** phone and TV, internal testing track. |
 
@@ -127,7 +127,7 @@ gradle.properties
 | `…&action=get_live_categories` / `get_live_streams` | Live TV |
 | `…&action=get_vod_categories` / `get_vod_streams` | Films |
 | `…&action=get_series_categories` / `get_series` | Series |
-| `xmltv.php?username=&password=` | Full EPG |
+| `xmltv.php?username=&password=` | Full EPG — **this portal serves none, so no guide UI is built** |
 
 Playback URLs are path-encoded rather than API calls, which is why `XtreamUrls`
 is unit tested:

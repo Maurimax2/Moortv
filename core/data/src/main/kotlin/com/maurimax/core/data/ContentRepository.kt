@@ -1,15 +1,14 @@
 package com.maurimax.core.data
 
+import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
-import kotlinx.coroutines.flow.Flow
 
 /**
- * The single seam between the UI and wherever titles actually come from.
+ * The single seam between the UI and the portal.
  *
- * Everything in the app talks to this interface, never to a network or database
- * directly. Swapping [FakeContentRepository] for a real backend, an IPTV playlist
- * parser, or a metadata provider is then a one-line change in the app modules.
+ * One call per tab: a panel returns its whole catalog for a section in two
+ * requests, so paging per row would be slower, not faster.
  */
 interface ContentRepository {
-    fun homeRows(): Flow<List<ContentRow>>
+    suspend fun rows(tab: CatalogTab): List<ContentRow>
 }
