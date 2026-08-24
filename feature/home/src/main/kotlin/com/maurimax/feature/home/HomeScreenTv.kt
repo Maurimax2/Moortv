@@ -91,7 +91,7 @@ fun HomeScreenTv(
             .fillMaxSize()
             .background(MaurimaxTheme.colors.ground),
     ) {
-        val hero = spotlight ?: state.rows.firstOrNull()?.items?.firstOrNull()
+        val hero = spotlight ?: state.visibleRows.firstOrNull()?.items?.firstOrNull()
         if (hero != null) {
             Backdrop(item = hero)
         }
@@ -217,8 +217,8 @@ private fun TvCatalog(
     onItemClick: (MediaItem) -> Unit,
 ) {
     val firstCard = remember(state.tab) { FocusRequester() }
-    LaunchedEffect(state.tab, state.rows) {
-        if (state.rows.isNotEmpty()) runCatching { firstCard.requestFocus() }
+    LaunchedEffect(state.tab, state.visibleRows) {
+        if (state.visibleRows.isNotEmpty()) runCatching { firstCard.requestFocus() }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -242,7 +242,7 @@ private fun TvCatalog(
                 bottom = Spacing.xl,
             ),
         ) {
-            itemsIndexed(state.rows, key = { _, row -> row.title }) { rowIndex, row ->
+            itemsIndexed(state.visibleRows, key = { _, row -> row.title }) { rowIndex, row ->
                 TvRow(
                     row = row,
                     tab = state.tab,

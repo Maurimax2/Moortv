@@ -24,7 +24,28 @@ data class HomeUiState(
     val rows: List<ContentRow> = emptyList(),
     val loading: Boolean = true,
     val failure: PortalFailure? = null,
+    val query: String = "",
 ) {
+
+    /**
+     * What the catalogue shows right now.
+     *
+     * Search filters the tab already in memory rather than asking the panel:
+     * the whole section is loaded anyway, so results are instant and work even
+     * when the panel is slow. Rows that lose every title are dropped, so an
+     * empty category header never sits over nothing.
+     */
+    val visibleRows: List<ContentRow>
+        get() {
+            val q = query.trim()
+            if (q.isBlank()) return rows
+            return rows.mapNotNull { row ->
+                val hits = row.items.filter { it.title.contains(q, ignoreCase = true) }
+                if (hits.isEmpty()) null else row.copy(items = hits)
+            }
+        }
+
+    val noResults: Boolean get() = query.isNotBlank() && visibleRows.isEmpty() && !loading
     val isEmpty: Boolean get() = !loading && failure == null && rows.isEmpty()
 }
 
@@ -67,6 +88,10 @@ class HomeViewModel(
             load(tab)
         }
     }
+
+    fun onQueryChange(value: String) = _uiState.update { it.copy(query = value) }
+
+    fun clearQuery() = _uiState.update { it.copy(query = "") }
 
     fun retry() = load(_uiState.value.tab)
 

@@ -42,21 +42,21 @@ class XtreamContentRepository(
                 categories = { liveCategories() },
                 items = { liveChannels() },
                 categoryOf = LiveChannel::categoryId,
-                toMediaItem = LiveChannel::toMediaItem,
+                toMediaItem = { it.toItem() },
             )
 
             CatalogTab.MOVIES -> sections(
                 categories = { movieCategories() },
                 items = { movies() },
                 categoryOf = Movie::categoryId,
-                toMediaItem = Movie::toMediaItem,
+                toMediaItem = { it.toItem() },
             )
 
             CatalogTab.SERIES -> sections(
                 categories = { seriesCategories() },
                 items = { series() },
                 categoryOf = Series::categoryId,
-                toMediaItem = Series::toMediaItem,
+                toMediaItem = { it.toItem() },
             )
         }
     }
@@ -82,12 +82,42 @@ class XtreamContentRepository(
         api.series(credentials.username, credentials.password, categoryId)
             .map(SeriesDto::toModel)
 
-    /** The playable URL for a channel. */
-    fun streamUrl(channel: LiveChannel): String =
-        urls.live(credentials.username, credentials.password, channel.streamId)
+    /**
+     * Playback URLs are built here rather than in the UI, because they are the
+     * one place the customer's credentials appear in a path — that stays inside
+     * the data layer.
+     */
+    private fun LiveChannel.toItem() = MediaItem(
+        id = "live-$streamId",
+        title = name,
+        kind = if (hasCatchUp) MediaKind.CATCH_UP else MediaKind.LIVE,
+        artworkUrl = logoUrl,
+        playbackUrl = urls.live(credentials.username, credentials.password, streamId),
+    )
 
-    fun streamUrl(movie: Movie): String =
-        urls.movie(credentials.username, credentials.password, movie.streamId, movie.containerExtension)
+    private fun Movie.toItem() = MediaItem(
+        id = "movie-$streamId",
+        title = name,
+        kind = MediaKind.MOVIE,
+        artworkUrl = posterUrl,
+        rating = rating,
+        playbackUrl = urls.movie(
+            credentials.username,
+            credentials.password,
+            streamId,
+            containerExtension,
+        ),
+    )
+
+    /** A series is a container: its episodes carry the streams, not the series. */
+    private fun Series.toItem() = MediaItem(
+        id = "series-$seriesId",
+        title = name,
+        kind = MediaKind.SERIES,
+        artworkUrl = posterUrl,
+        rating = rating,
+        description = plot,
+    )
 
     /**
      * Categories and items arrive as two flat lists, so rows are assembled here
@@ -152,29 +182,3 @@ internal fun SeriesDto.toModel() = Series(
     plot = plot,
     rating = rating,
 )
-
-internal fun Movie.toMediaItem() = MediaItem(
-    id = "movie-$streamId",
-    title = name,
-    kind = MediaKind.MOVIE,
-    artworkUrl = posterUrl,
-    rating = rating,
-)
-
-internal fun Series.toMediaItem() = MediaItem(
-    id = "series-$seriesId",
-    title = name,
-    kind = MediaKind.SERIES,
-    artworkUrl = posterUrl,
-    rating = rating,
-    description = plot,
-)
-
-/** Live channels have no year, rating or runtime; the kind carries the label. */
-internal fun LiveChannel.toMediaItem() = MediaItem(
-    id = "live-$streamId",
-    title = name,
-    kind = if (hasCatchUp) MediaKind.CATCH_UP else MediaKind.LIVE,
-    artworkUrl = logoUrl,
-)
-

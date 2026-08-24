@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A TV is already landscape; forcing orientation there fights the device. -->
+    <bool name="is_television">true</bool>
+</resources>

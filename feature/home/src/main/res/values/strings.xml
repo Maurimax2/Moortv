@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="search_hint">ابحث عن قناة أو فيلم أو مسلسل</string>
+    <string name="search_clear">مسح</string>
+    <string name="search_no_results">لا توجد نتائج لـ \"%1$s\"</string>
+
     <string name="tab_live">البث المباشر</string>
     <string name="tab_movies">أفلام</string>
     <string name="tab_series">مسلسلات</string>

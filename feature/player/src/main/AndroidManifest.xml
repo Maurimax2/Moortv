@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          Playback runs in its own activity so it can own the orientation and the
+          screen-on flag without the catalogue having to care.
+        -->
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
+            android:supportsPictureInPicture="true"
+            android:theme="@style/Theme.MaurimaxPlayer" />
+    </application>
+</manifest>

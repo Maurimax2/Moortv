@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Video always sits on black, whatever theme the catalogue is in. -->
+    <style name="Theme.MaurimaxPlayer" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">#000000</item>
+    </style>
+</resources>

@@ -22,6 +22,7 @@ import com.maurimax.feature.auth.LoginScreenMobile
 import com.maurimax.feature.auth.LoginViewModel
 import com.maurimax.feature.home.HomeScreenMobile
 import com.maurimax.feature.home.HomeViewModel
+import com.maurimax.feature.player.PlayerActivity
 
 class MainActivity : ComponentActivity() {
 
@@ -83,6 +84,19 @@ private fun MaurimaxMobileApp(
                 key = "home-${credentials.username}",
                 factory = HomeViewModel.factory(credentials),
             ),
+            onItemClick = { item ->
+                // A series is a container, not a stream; its episode list comes next.
+                if (item.isPlayable) {
+                    activity.startActivity(
+                        PlayerActivity.intent(
+                            context = activity,
+                            url = item.playbackUrl,
+                            title = item.title,
+                            isLive = item.isLive,
+                        ),
+                    )
+                }
+            },
         )
     } else {
         LoginScreenMobile(

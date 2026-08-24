@@ -23,16 +23,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,6 +65,7 @@ fun HomeScreenMobile(
     HomeScreenMobile(
         state = state,
         onTabSelect = viewModel::selectTab,
+        onQueryChange = viewModel::onQueryChange,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
         modifier = modifier,
@@ -71,6 +76,7 @@ fun HomeScreenMobile(
 fun HomeScreenMobile(
     state: HomeUiState,
     onTabSelect: (CatalogTab) -> Unit = {},
+    onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -81,7 +87,12 @@ fun HomeScreenMobile(
             .background(MaurimaxTheme.colors.ground),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Masthead(tab = state.tab, onTabSelect = onTabSelect)
+            Masthead(
+                tab = state.tab,
+                query = state.query,
+                onTabSelect = onTabSelect,
+                onQueryChange = onQueryChange,
+            )
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
@@ -94,6 +105,14 @@ fun HomeScreenMobile(
                         failure = state.failure,
                         onRetry = onRetry,
                         modifier = Modifier.align(Alignment.Center),
+                    )
+
+                    state.noResults -> Text(
+                        text = stringResource(R.string.search_no_results, state.query),
+                        color = MaurimaxTheme.colors.textSecondary,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(Spacing.lg),
                     )
 
                     state.isEmpty -> Text(
@@ -110,7 +129,12 @@ fun HomeScreenMobile(
 }
 
 @Composable
-private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
+private fun Masthead(
+    tab: CatalogTab,
+    query: String,
+    onTabSelect: (CatalogTab) -> Unit,
+    onQueryChange: (String) -> Unit,
+) {
     Column(
         modifier = Modifier
             .background(MaurimaxTheme.colors.ground)
@@ -133,6 +157,68 @@ private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
                     onClick = { onTabSelect(entry) },
                 )
             }
+        }
+
+        SearchField(
+            query = query,
+            onQueryChange = onQueryChange,
+            modifier = Modifier.padding(
+                start = Spacing.md,
+                end = Spacing.md,
+                top = Spacing.sm,
+                bottom = Spacing.sm,
+            ),
+        )
+    }
+}
+
+/** Filters the section already on screen, so results appear as you type. */
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaurimaxTheme.colors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Corners.control))
+            .background(colors.surfaceRaised)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+    ) {
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(color = colors.textPrimary, fontSize = 15.sp),
+            cursorBrush = SolidColor(colors.accent),
+            decorationBox = { inner ->
+                if (query.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.search_hint),
+                        color = colors.textTertiary,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                inner()
+            },
+            modifier = Modifier.weight(1f),
+        )
+
+        if (query.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.search_clear),
+                color = colors.accentText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable { onQueryChange("") }
+                    .padding(start = Spacing.sm),
+            )
         }
     }
 }
@@ -176,7 +262,7 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
             bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        items(state.rows, key = { it.title }) { row ->
+        items(state.visibleRows, key = { it.title }) { row ->
             MobileRow(row = row, tab = state.tab, onItemClick = onItemClick)
         }
     }

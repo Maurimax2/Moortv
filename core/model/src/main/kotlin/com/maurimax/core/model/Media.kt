@@ -23,7 +23,15 @@ data class MediaItem(
     val durationMinutes: Int = 0,
     /** 0f..1f — how far through the customer is. 0f means unwatched. */
     val progress: Float = 0f,
-)
+    /**
+     * Where this plays from. Empty for a series, which is a container rather
+     * than a stream — its episodes each have their own URL.
+     */
+    val playbackUrl: String = "",
+) {
+    val isPlayable: Boolean get() = playbackUrl.isNotBlank()
+    val isLive: Boolean get() = kind == MediaKind.LIVE || kind == MediaKind.CATCH_UP
+}
 
 /**
  * The three things the portal serves. Each is a top-level destination, because

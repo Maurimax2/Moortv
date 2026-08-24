@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_error">Lecture impossible. Réessayez ou choisissez un autre titre.</string>
+    <string name="player_retry">Réessayer</string>
+    <string name="player_back">Retour</string>
+</resources>

@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:home"))
     implementation(project(":feature:auth"))
+    implementation(project(":feature:player"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.coil.compose)

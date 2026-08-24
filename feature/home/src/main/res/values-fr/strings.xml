@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="search_hint">Rechercher une chaîne, un film ou une série</string>
+    <string name="search_clear">Effacer</string>
+    <string name="search_no_results">Aucun résultat pour \"%1$s\"</string>
+
     <string name="tab_live">Direct</string>
     <string name="tab_movies">Films</string>
     <string name="tab_series">Séries</string>
