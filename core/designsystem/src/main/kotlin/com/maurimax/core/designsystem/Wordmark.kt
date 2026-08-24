@@ -55,7 +55,7 @@ fun Wordmark(
     BasicText(
         text = "MAURIMAX",
         style = TextStyle(
-            color = Brand.TextPrimary,
+            color = MaurimaxTheme.colors.textPrimary,
             fontSize = fontSize,
             fontWeight = FontWeight.Black,
             letterSpacing = fontSize * 0.16f,

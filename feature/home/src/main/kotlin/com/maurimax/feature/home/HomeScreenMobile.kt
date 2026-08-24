@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Artwork
-import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
@@ -75,7 +75,7 @@ fun HomeScreenMobile(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brand.Ink),
+            .background(MaurimaxTheme.colors.ground),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Masthead(tab = state.tab, onTabSelect = onTabSelect)
@@ -83,7 +83,7 @@ fun HomeScreenMobile(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.loading -> CircularProgressIndicator(
-                        color = Brand.Orange,
+                        color = MaurimaxTheme.colors.accent,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
@@ -94,7 +94,7 @@ fun HomeScreenMobile(
 
                     state.isEmpty -> Text(
                         text = stringResource(R.string.home_empty),
-                        color = Brand.TextSecondary,
+                        color = MaurimaxTheme.colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
@@ -109,7 +109,7 @@ fun HomeScreenMobile(
 private fun Masthead(tab: CatalogTab, onTabSelect: (CatalogTab) -> Unit) {
     Column(
         modifier = Modifier
-            .background(Brand.Ink)
+            .background(MaurimaxTheme.colors.ground)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
     ) {
         BrandLockup(
@@ -147,7 +147,7 @@ private fun TabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            color = if (selected) Brand.TextPrimary else Brand.TextTertiary,
+            color = if (selected) MaurimaxTheme.colors.textPrimary else MaurimaxTheme.colors.textTertiary,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             fontSize = 15.sp,
             modifier = Modifier.padding(vertical = Spacing.sm),
@@ -157,7 +157,7 @@ private fun TabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
                 modifier = Modifier
                     .height(2.dp)
                     .width(24.dp)
-                    .background(Brand.Orange, RoundedCornerShape(2.dp)),
+                    .background(MaurimaxTheme.colors.accent, RoundedCornerShape(2.dp)),
             )
         }
     }
@@ -183,7 +183,7 @@ private fun MobileRow(row: ContentRow, tab: CatalogTab, onItemClick: (MediaItem)
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             text = row.title,
-            color = Brand.TextPrimary,
+            color = MaurimaxTheme.colors.textPrimary,
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp,
             maxLines = 1,
@@ -218,7 +218,7 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .height(tileHeight)
                 .clip(RoundedCornerShape(Corners.tile))
-                .background(Brand.SurfaceRaised),
+                .background(MaurimaxTheme.colors.surfaceRaised),
         ) {
             Artwork(
                 url = item.artworkUrl,
@@ -233,8 +233,8 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
         if (item.progress > 0f) {
             LinearProgressIndicator(
                 progress = { item.progress },
-                color = Brand.Orange,
-                trackColor = Brand.Outline,
+                color = MaurimaxTheme.colors.accent,
+                trackColor = MaurimaxTheme.colors.outline,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp),
@@ -243,14 +243,14 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
 
         Text(
             text = item.title,
-            color = Brand.TextPrimary,
+            color = MaurimaxTheme.colors.textPrimary,
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = itemLabel(item),
-            color = Brand.TextTertiary,
+            color = MaurimaxTheme.colors.textTertiary,
             fontSize = 11.sp,
             maxLines = 1,
         )
@@ -266,15 +266,15 @@ private fun ErrorPanel(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(R.string.home_error),
-            color = Brand.TextSecondary,
+            color = MaurimaxTheme.colors.textSecondary,
             fontSize = 15.sp,
         )
         Button(
             onClick = onRetry,
             shape = RoundedCornerShape(Corners.control),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Brand.Orange,
-                contentColor = Brand.TextPrimary,
+                containerColor = MaurimaxTheme.colors.accent,
+                contentColor = MaurimaxTheme.colors.textPrimary,
             ),
         ) {
             Text(stringResource(R.string.home_retry), fontWeight = FontWeight.SemiBold)

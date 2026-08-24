@@ -38,8 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.MaurimaxTheme
+import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 
@@ -48,6 +49,8 @@ fun LoginScreenMobile(
     viewModel: LoginViewModel,
     language: String,
     onLanguageChange: (String) -> Unit,
+    theme: ThemeMode,
+    onThemeChange: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,6 +58,8 @@ fun LoginScreenMobile(
         state = state,
         language = language,
         onLanguageChange = onLanguageChange,
+        theme = theme,
+        onThemeChange = onThemeChange,
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
@@ -67,6 +72,8 @@ fun LoginScreenMobile(
     state: LoginUiState,
     language: String = com.maurimax.core.data.AppLocale.ARABIC,
     onLanguageChange: (String) -> Unit = {},
+    theme: ThemeMode = ThemeMode.LIGHT,
+    onThemeChange: (ThemeMode) -> Unit = {},
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -77,7 +84,7 @@ fun LoginScreenMobile(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brand.Ink)
+            .background(MaurimaxTheme.colors.ground)
             .imePadding(),
         contentAlignment = Alignment.Center,
     ) {
@@ -90,8 +97,15 @@ fun LoginScreenMobile(
         ) {
             BrandLockup(fontSize = 28.sp, markHeight = 44.dp)
             Text(
+                text = stringResource(R.string.brand_tagline),
+                color = MaurimaxTheme.colors.accentText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 22.sp,
+            )
+            Text(
                 text = stringResource(R.string.auth_subtitle),
-                color = Brand.TextSecondary,
+                color = MaurimaxTheme.colors.textSecondary,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 modifier = Modifier.padding(bottom = Spacing.sm),
@@ -133,7 +147,7 @@ fun LoginScreenMobile(
                             text = stringResource(
                                 if (passwordVisible) R.string.auth_hide else R.string.auth_show,
                             ),
-                            color = Brand.TextSecondary,
+                            color = MaurimaxTheme.colors.textSecondary,
                             fontSize = 13.sp,
                         )
                     }
@@ -145,7 +159,7 @@ fun LoginScreenMobile(
             state.error?.let { failure ->
                 Text(
                     text = failure.message(),
-                    color = Brand.OrangeLit,
+                    color = MaurimaxTheme.colors.accentText,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                 )
@@ -156,10 +170,10 @@ fun LoginScreenMobile(
                 enabled = state.canSubmit,
                 shape = RoundedCornerShape(Corners.control),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Brand.Orange,
-                    contentColor = Brand.TextPrimary,
-                    disabledContainerColor = Brand.SurfaceRaised,
-                    disabledContentColor = Brand.TextTertiary,
+                    containerColor = MaurimaxTheme.colors.accent,
+                    contentColor = MaurimaxTheme.colors.textPrimary,
+                    disabledContainerColor = MaurimaxTheme.colors.surfaceRaised,
+                    disabledContentColor = MaurimaxTheme.colors.textTertiary,
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -167,7 +181,7 @@ fun LoginScreenMobile(
             ) {
                 if (state.signingIn) {
                     CircularProgressIndicator(
-                        color = Brand.TextPrimary,
+                        color = MaurimaxTheme.colors.textPrimary,
                         strokeWidth = 2.dp,
                         modifier = Modifier.padding(vertical = Spacing.xs),
                     )
@@ -185,17 +199,18 @@ fun LoginScreenMobile(
                 onSelect = onLanguageChange,
                 modifier = Modifier.padding(top = Spacing.sm),
             )
+            ThemeSwitch(current = theme, onSelect = onThemeChange)
         }
     }
 }
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Brand.TextPrimary,
-    unfocusedTextColor = Brand.TextPrimary,
-    focusedBorderColor = Brand.Orange,
-    unfocusedBorderColor = Brand.Outline,
-    focusedLabelColor = Brand.Orange,
-    unfocusedLabelColor = Brand.TextSecondary,
-    cursorColor = Brand.Orange,
+    focusedTextColor = MaurimaxTheme.colors.textPrimary,
+    unfocusedTextColor = MaurimaxTheme.colors.textPrimary,
+    focusedBorderColor = MaurimaxTheme.colors.accent,
+    unfocusedBorderColor = MaurimaxTheme.colors.outline,
+    focusedLabelColor = MaurimaxTheme.colors.accent,
+    unfocusedLabelColor = MaurimaxTheme.colors.textSecondary,
+    cursorColor = MaurimaxTheme.colors.accent,
 )

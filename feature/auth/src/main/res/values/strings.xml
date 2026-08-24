@@ -4,6 +4,11 @@
   device gets unless it specifically asks for another translation.
 -->
 <resources>
+    <!-- Positioning line, shown under the lockup on sign-in. -->
+    <string name="brand_tagline">أول منصة ترفيهية في موريتانيا</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+
     <string name="auth_subtitle">سجّل الدخول باسم المستخدم وكلمة المرور الخاصَّين باشتراكك.</string>
     <string name="auth_username">اسم المستخدم</string>
     <string name="auth_password">كلمة المرور</string>

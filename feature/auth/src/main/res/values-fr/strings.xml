@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="brand_tagline">La première plateforme de divertissement en Mauritanie</string>
+    <string name="theme_light">Clair</string>
+    <string name="theme_dark">Sombre</string>
+
     <string name="auth_subtitle">Connectez-vous avec le nom d\'utilisateur et le mot de passe de votre abonnement.</string>
     <string name="auth_username">Nom d\'utilisateur</string>
     <string name="auth_password">Mot de passe</string>

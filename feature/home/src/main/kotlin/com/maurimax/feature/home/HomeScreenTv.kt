@@ -46,7 +46,9 @@ import androidx.tv.material3.Text
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.BrandLockup
+import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
@@ -84,7 +86,7 @@ fun HomeScreenTv(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brand.Ink),
+            .background(MaurimaxTheme.colors.ground),
     ) {
         val hero = spotlight ?: state.rows.firstOrNull()?.items?.firstOrNull()
         if (hero != null) {
@@ -106,7 +108,7 @@ fun HomeScreenTv(
                 when {
                     state.loading -> Text(
                         text = stringResource(R.string.home_loading),
-                        color = Brand.TextSecondary,
+                        color = MaurimaxTheme.colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
@@ -117,7 +119,7 @@ fun HomeScreenTv(
 
                     state.isEmpty -> Text(
                         text = stringResource(R.string.home_empty),
-                        color = Brand.TextSecondary,
+                        color = MaurimaxTheme.colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
@@ -148,9 +150,12 @@ private fun Backdrop(item: MediaItem) {
                     .fillMaxHeight(Brand.HERO_ART_FRACTION),
             )
         }
-        // Two scrims: one from the left for the copy, one from the bottom for the rows.
-        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrimSide))
-        Box(modifier = Modifier.fillMaxSize().background(Brand.HeroScrim))
+        // Three washes. The first darkens the artwork itself so overlaid copy is
+        // legible whatever the poster looks like — needed in light mode too. The
+        // other two fade the art into this theme's ground.
+        Box(modifier = Modifier.fillMaxSize().background(Scrims.onArtwork))
+        Box(modifier = Modifier.fillMaxSize().background(Scrims.heroSide()))
+        Box(modifier = Modifier.fillMaxSize().background(Scrims.heroFade()))
     }
 }
 
@@ -175,12 +180,12 @@ private fun TvTabBar(
                 onClick = { onTabSelect(entry) },
                 colors = CardDefaults.colors(
                     containerColor = Color.Transparent,
-                    focusedContainerColor = Brand.SurfaceRaised,
+                    focusedContainerColor = MaurimaxTheme.colors.surfaceRaised,
                 ),
                 shape = CardDefaults.shape(RoundedCornerShape(Corners.control)),
                 border = CardDefaults.border(
                     focusedBorder = Border(
-                        border = androidx.compose.foundation.BorderStroke(2.dp, Brand.Orange),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaurimaxTheme.colors.accent),
                         shape = RoundedCornerShape(Corners.control),
                     ),
                 ),
@@ -190,8 +195,8 @@ private fun TvTabBar(
                 Text(
                     text = stringResource(entry.labelRes),
                     color = when {
-                        focused || selected -> Brand.TextPrimary
-                        else -> Brand.TextTertiary
+                        focused || selected -> MaurimaxTheme.colors.textPrimary
+                        else -> MaurimaxTheme.colors.textTertiary
                     },
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     fontSize = 17.sp,
@@ -252,6 +257,7 @@ private fun TvCatalog(
 private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
     Column(modifier = modifier.width(560.dp)) {
         Text(
+            // On artwork, not on the page: white in both themes, over the scrim.
             text = item.title,
             color = Color.White,
             fontWeight = FontWeight.Black,
@@ -262,7 +268,7 @@ private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
         )
         Text(
             text = heroLabel(item),
-            color = Brand.OrangeLit,
+            color = MaurimaxTheme.colors.accentText,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = Spacing.xs),
@@ -270,7 +276,7 @@ private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
         if (item.description.isNotBlank()) {
             Text(
                 text = item.description,
-                color = Brand.TextSecondary,
+                color = MaurimaxTheme.colors.textSecondary,
                 fontSize = 14.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -291,7 +297,7 @@ private fun TvRow(
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             text = row.title,
-            color = Brand.TextPrimary,
+            color = MaurimaxTheme.colors.textPrimary,
             fontWeight = FontWeight.SemiBold,
             fontSize = 18.sp,
             maxLines = 1,
@@ -337,17 +343,17 @@ private fun TvTile(
         scale = CardDefaults.scale(focusedScale = 1.08f),
         shape = CardDefaults.shape(RoundedCornerShape(Corners.card)),
         colors = CardDefaults.colors(
-            containerColor = Brand.SurfaceRaised,
-            focusedContainerColor = Brand.SurfaceRaised,
+            containerColor = MaurimaxTheme.colors.surfaceRaised,
+            focusedContainerColor = MaurimaxTheme.colors.surfaceRaised,
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Brand.Orange),
+                border = androidx.compose.foundation.BorderStroke(3.dp, MaurimaxTheme.colors.accent),
                 shape = RoundedCornerShape(Corners.card),
             ),
         ),
         glow = CardDefaults.glow(
-            focusedGlow = Glow(elevationColor = Brand.FocusGlow, elevation = 12.dp),
+            focusedGlow = Glow(elevationColor = MaurimaxTheme.colors.focusGlow, elevation = 12.dp),
         ),
         modifier = modifier
             .width(tileWidth)
@@ -375,13 +381,13 @@ private fun TvErrorPanel(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(R.string.home_error),
-            color = Brand.TextSecondary,
+            color = MaurimaxTheme.colors.textSecondary,
             fontSize = 17.sp,
         )
         Card(onClick = onRetry, scale = CardDefaults.scale(focusedScale = 1.05f)) {
             Text(
                 text = stringResource(R.string.home_retry),
-                color = Brand.TextPrimary,
+                color = MaurimaxTheme.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             )

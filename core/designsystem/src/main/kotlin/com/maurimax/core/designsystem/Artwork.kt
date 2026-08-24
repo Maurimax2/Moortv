@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -60,14 +61,20 @@ fun Artwork(
         label = "artwork-fade",
     )
 
-    Box(modifier = modifier.background(plateBrush(fallbackTint))) {
+    val light = MaurimaxTheme.colors.isLight
+    Box(modifier = modifier.background(plateBrush(fallbackTint, light))) {
         // The plate stays behind the image rather than being swapped out, so a
         // logo with transparency has something considered to sit on.
         if ((!loaded || failed) && showFallbackLabel) {
             BasicText(
                 text = title,
                 style = TextStyle(
-                    color = Color.White.copy(alpha = 0.92f),
+                    // On a pale plate white would vanish, so the label follows the theme.
+                    color = if (light) {
+                        MaurimaxTheme.colors.textSecondary
+                    } else {
+                        Color.White.copy(alpha = 0.92f)
+                    },
                     fontWeight = FontWeight.SemiBold,
                     fontSize = fallbackTextSize,
                     textAlign = TextAlign.Center,
@@ -104,13 +111,28 @@ fun Artwork(
     }
 }
 
-/** A two-stop wash from the item's tint, so plates differ but stay in family. */
-private fun plateBrush(tint: Long): Brush {
+/**
+ * A two-stop wash from the item's tint, so plates differ but stay in family.
+ *
+ * On light the tint is lightened rather than shown at full strength: a
+ * saturated block on paper reads as an error state, while the same block on
+ * near-black reads as artwork.
+ */
+private fun plateBrush(tint: Long, light: Boolean): Brush {
     val base = Color(tint)
-    return Brush.linearGradient(
-        listOf(
-            base.copy(alpha = 0.92f),
-            base.copy(alpha = 0.45f),
-        ),
-    )
+    return if (light) {
+        Brush.linearGradient(
+            listOf(
+                base.copy(alpha = 0.30f).compositeOver(Color.White),
+                base.copy(alpha = 0.14f).compositeOver(Color.White),
+            ),
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                base.copy(alpha = 0.92f),
+                base.copy(alpha = 0.45f),
+            ),
+        )
+    }
 }

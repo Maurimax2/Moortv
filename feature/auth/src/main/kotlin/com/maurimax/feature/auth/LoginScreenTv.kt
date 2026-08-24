@@ -35,9 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
+import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.MaurimaxFormColors
+import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
 
@@ -46,6 +47,8 @@ fun LoginScreenTv(
     viewModel: LoginViewModel,
     language: String,
     onLanguageChange: (String) -> Unit,
+    theme: ThemeMode,
+    onThemeChange: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -53,6 +56,8 @@ fun LoginScreenTv(
         state = state,
         language = language,
         onLanguageChange = onLanguageChange,
+        theme = theme,
+        onThemeChange = onThemeChange,
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
@@ -65,6 +70,8 @@ fun LoginScreenTv(
     state: LoginUiState,
     language: String = com.maurimax.core.data.AppLocale.ARABIC,
     onLanguageChange: (String) -> Unit = {},
+    theme: ThemeMode = ThemeMode.LIGHT,
+    onThemeChange: (ThemeMode) -> Unit = {},
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -76,7 +83,7 @@ fun LoginScreenTv(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .background(Brand.Ink)
+            .background(MaurimaxTheme.colors.ground)
             .padding(Spacing.tvOverscan),
     ) {
         // Left half is brand, right half is the form. Splitting them keeps the
@@ -89,8 +96,18 @@ fun LoginScreenTv(
         ) {
             BrandLockup(fontSize = 40.sp, markHeight = 62.dp)
             Text(
+                text = stringResource(R.string.brand_tagline),
+                color = MaurimaxTheme.colors.accentText,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 27.sp,
+                modifier = Modifier
+                    .padding(top = Spacing.sm)
+                    .width(400.dp),
+            )
+            Text(
                 text = stringResource(R.string.auth_subtitle),
-                color = Brand.TextSecondary,
+                color = MaurimaxTheme.colors.textSecondary,
                 fontSize = 17.sp,
                 lineHeight = 25.sp,
                 modifier = Modifier
@@ -102,6 +119,12 @@ fun LoginScreenTv(
                 onSelect = onLanguageChange,
                 fontSize = 15.sp,
                 modifier = Modifier.padding(top = Spacing.lg),
+            )
+            ThemeSwitch(
+                current = theme,
+                onSelect = onThemeChange,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(top = Spacing.sm),
             )
         }
 
@@ -146,7 +169,7 @@ fun LoginScreenTv(
                 state.error?.let { failure ->
                     Text(
                         text = failure.message(),
-                        color = Brand.OrangeLit,
+                        color = MaurimaxTheme.colors.accentText,
                         fontSize = 16.sp,
                         lineHeight = 23.sp,
                         modifier = Modifier.padding(top = Spacing.md),
@@ -158,10 +181,10 @@ fun LoginScreenTv(
                     enabled = state.canSubmit,
                     shape = RoundedCornerShape(Corners.control),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Brand.Orange,
-                        contentColor = Brand.TextPrimary,
-                        disabledContainerColor = Brand.SurfaceRaised,
-                        disabledContentColor = Brand.TextTertiary,
+                        containerColor = MaurimaxTheme.colors.accent,
+                        contentColor = MaurimaxTheme.colors.textPrimary,
+                        disabledContainerColor = MaurimaxTheme.colors.surfaceRaised,
+                        disabledContentColor = MaurimaxTheme.colors.textTertiary,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -185,11 +208,11 @@ fun LoginScreenTv(
 
 @Composable
 private fun tvFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Brand.TextPrimary,
-    unfocusedTextColor = Brand.TextPrimary,
-    focusedBorderColor = Brand.Orange,
-    unfocusedBorderColor = Brand.Outline,
-    focusedLabelColor = Brand.Orange,
-    unfocusedLabelColor = Brand.TextSecondary,
-    cursorColor = Brand.Orange,
+    focusedTextColor = MaurimaxTheme.colors.textPrimary,
+    unfocusedTextColor = MaurimaxTheme.colors.textPrimary,
+    focusedBorderColor = MaurimaxTheme.colors.accent,
+    unfocusedBorderColor = MaurimaxTheme.colors.outline,
+    focusedLabelColor = MaurimaxTheme.colors.accent,
+    unfocusedLabelColor = MaurimaxTheme.colors.textSecondary,
+    cursorColor = MaurimaxTheme.colors.accent,
 )
