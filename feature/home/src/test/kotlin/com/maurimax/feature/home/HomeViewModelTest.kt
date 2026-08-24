@@ -9,10 +9,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,7 +46,7 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(2, state.rows.size)
         assertEquals("Entertainment", state.rows.first().title)
-        assertFalse(state.failed)
+        assertNull(state.failure)
     }
 
     @Test
@@ -92,13 +94,13 @@ class HomeViewModelTest {
 
         val viewModel = HomeViewModel(flaky)
         testScheduler.advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.failed)
+        assertNotNull(viewModel.uiState.value.failure)
 
         fail = false
         viewModel.retry()
         testScheduler.advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.failed)
+        assertNull(viewModel.uiState.value.failure)
         assertEquals(2, viewModel.uiState.value.rows.size)
     }
 
@@ -112,6 +114,27 @@ class HomeViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isEmpty)
-        assertFalse(viewModel.uiState.value.failed)
+        assertNull(viewModel.uiState.value.failure)
     }
+
+    @Test
+    fun `a slow response for an abandoned tab never lands on the current one`() =
+        runTest(dispatcher) {
+            // The reported symptom: switching tabs showed the wrong catalogue,
+            // because a slow request finished after the tab had already changed.
+            val slowLive = object : ContentRepository {
+                override suspend fun rows(tab: CatalogTab): List<ContentRow> {
+                    if (tab == CatalogTab.LIVE) delay(5_000)
+                    return FakeContentRepository().rows(tab)
+                }
+            }
+
+            val viewModel = HomeViewModel(slowLive)
+            viewModel.selectTab(CatalogTab.MOVIES)
+            testScheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(CatalogTab.MOVIES, state.tab)
+            assertEquals("Action", state.rows.first().title)
+        }
 }

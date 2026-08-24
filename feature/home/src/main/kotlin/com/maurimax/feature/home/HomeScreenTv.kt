@@ -45,6 +45,8 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.Text
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.Brand
+import com.maurimax.core.data.PortalFailure
+import com.maurimax.core.data.messageRes
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.BrandLockup
@@ -112,7 +114,8 @@ fun HomeScreenTv(
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                    state.failed -> TvErrorPanel(
+                    state.failure != null -> TvErrorPanel(
+                        failure = state.failure,
                         onRetry = onRetry,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -372,14 +375,18 @@ private fun TvTile(
 }
 
 @Composable
-private fun TvErrorPanel(onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun TvErrorPanel(
+    failure: PortalFailure,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
         modifier = modifier,
     ) {
         Text(
-            text = stringResource(R.string.home_error),
+            text = failureMessage(failure),
             color = MaurimaxTheme.colors.textSecondary,
             fontSize = 17.sp,
         )
@@ -400,3 +407,12 @@ private fun heroLabel(item: MediaItem): String {
     val kind = stringResource(item.kind.labelRes)
     return if (item.rating.isBlank()) kind else "★ ${item.rating}  ·  $kind"
 }
+
+/** The specific reason the catalogue could not load, in the customer's language. */
+@Composable
+private fun failureMessage(failure: PortalFailure): String =
+    if (failure is PortalFailure.Inactive) {
+        stringResource(failure.messageRes, failure.status)
+    } else {
+        stringResource(failure.messageRes)
+    }

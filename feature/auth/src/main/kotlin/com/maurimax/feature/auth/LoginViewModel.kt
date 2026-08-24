@@ -7,7 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.AuthRepository
 import com.maurimax.core.data.Graph
-import com.maurimax.core.data.LoginFailure
+import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.LoginResult
 import com.maurimax.core.model.Account
 import com.maurimax.core.model.Credentials
@@ -21,7 +21,7 @@ data class LoginUiState(
     val username: String = "",
     val password: String = "",
     val signingIn: Boolean = false,
-    val error: LoginFailure? = null,
+    val error: PortalFailure? = null,
     val account: Account? = null,
     val credentials: Credentials? = null,
 ) {

@@ -7,6 +7,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.ContentRepository
 import com.maurimax.core.data.Graph
+import com.maurimax.core.data.PortalFailure
+import com.maurimax.core.data.toPortalFailure
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
@@ -14,15 +16,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val tab: CatalogTab = CatalogTab.LIVE,
     val rows: List<ContentRow> = emptyList(),
     val loading: Boolean = true,
-    val failed: Boolean = false,
+    val failure: PortalFailure? = null,
 ) {
-    val isEmpty: Boolean get() = !loading && !failed && rows.isEmpty()
+    val isEmpty: Boolean get() = !loading && failure == null && rows.isEmpty()
 }
 
 /**
@@ -43,12 +46,19 @@ class HomeViewModel(
      */
     private val cache = mutableMapOf<CatalogTab, List<ContentRow>>()
 
+    /**
+     * The in-flight load. A large panel takes seconds to answer, so without
+     * cancelling, a slow response for the tab you just left arrives after the
+     * new one and overwrites it — which shows films under Live TV.
+     */
+    private var loadJob: Job? = null
+
     init {
         load(CatalogTab.LIVE)
     }
 
     fun selectTab(tab: CatalogTab) {
-        if (tab == _uiState.value.tab && !_uiState.value.failed) return
+        if (tab == _uiState.value.tab && _uiState.value.failure == null) return
 
         val cached = cache[tab]
         if (cached != null) {
@@ -61,18 +71,24 @@ class HomeViewModel(
     fun retry() = load(_uiState.value.tab)
 
     private fun load(tab: CatalogTab) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.value = HomeUiState(tab = tab, loading = true)
 
             runCatching { repository.rows(tab) }
                 .onSuccess { rows ->
+                    // Cancellation is not instant, so a late response still has to
+                    // prove it belongs to the tab on screen before it is shown.
+                    if (_uiState.value.tab != tab) return@onSuccess
                     cache[tab] = rows
-                    _uiState.update { it.copy(rows = rows, loading = false, failed = false) }
+                    _uiState.update { it.copy(rows = rows, loading = false, failure = null) }
                 }
-                .onFailure {
-                    // The exception text is a developer detail; the screen shows
-                    // a translated message instead.
-                    _uiState.update { it.copy(loading = false, failed = true) }
+                .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    if (_uiState.value.tab != tab) return@onFailure
+                    _uiState.update {
+                        it.copy(loading = false, failure = error.toPortalFailure())
+                    }
                 }
         }
     }

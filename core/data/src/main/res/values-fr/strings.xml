@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portal_bad_credentials">Nom d\'utilisateur ou mot de passe incorrect. Vérifiez-les et réessayez.</string>
+    <string name="portal_inactive">Ce compte est inactif (%1$s). Contactez le support pour le renouveler.</string>
+    <string name="portal_no_connection">Aucune connexion internet. Vérifiez votre réseau et réessayez.</string>
+    <string name="portal_server_error">Le serveur MAURIMAX ne répond pas pour le moment. Réessayez dans un instant.</string>
+    <string name="portal_unexpected">Réponse du serveur incompréhensible. Réessayez ou contactez le support.</string>
+</resources>

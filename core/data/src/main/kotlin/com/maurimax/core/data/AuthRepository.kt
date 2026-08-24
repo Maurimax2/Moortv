@@ -4,21 +4,9 @@ import com.maurimax.core.model.Account
 import com.maurimax.core.model.Credentials
 import com.maurimax.core.network.XtreamApi
 
-/** Why a sign-in attempt did not succeed. Each maps to a distinct message. */
-sealed interface LoginFailure {
-    /** The panel answered, and said no. */
-    data object BadCredentials : LoginFailure
-
-    /** Credentials are valid but the account is expired, banned or disabled. */
-    data class Inactive(val status: String) : LoginFailure
-
-    /** The panel could not be reached at all. */
-    data class Unreachable(val cause: String) : LoginFailure
-}
-
 sealed interface LoginResult {
     data class Success(val account: Account) : LoginResult
-    data class Failure(val reason: LoginFailure) : LoginResult
+    data class Failure(val reason: PortalFailure) : LoginResult
 }
 
 /**
@@ -37,14 +25,12 @@ class AuthRepository(
         val response = try {
             api.login(username, password)
         } catch (e: Exception) {
-            return LoginResult.Failure(
-                LoginFailure.Unreachable(e.message ?: e::class.simpleName ?: "unknown error"),
-            )
+            return LoginResult.Failure(e.toPortalFailure())
         }
 
         val info = response.userInfo
         if (info == null || info.auth != 1) {
-            return LoginResult.Failure(LoginFailure.BadCredentials)
+            return LoginResult.Failure(PortalFailure.BadCredentials)
         }
 
         val account = Account(
@@ -58,7 +44,7 @@ class AuthRepository(
 
         // A panel can authenticate an account it will not stream to.
         if (!account.isActive && account.status.isNotBlank()) {
-            return LoginResult.Failure(LoginFailure.Inactive(account.status))
+            return LoginResult.Failure(PortalFailure.Inactive(account.status))
         }
 
         if (remember) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic is the default language, so it lives in values/. -->
+<resources>
+    <string name="portal_bad_credentials">اسم المستخدم أو كلمة المرور غير صحيحة. تحقّق منهما وحاول مرة أخرى.</string>
+    <!-- %1$s is the account state the portal reports, e.g. Expired. -->
+    <string name="portal_inactive">هذا الحساب غير نشط (%1$s). يرجى التواصل مع الدعم لتجديد اشتراكك.</string>
+    <string name="portal_no_connection">لا يوجد اتصال بالإنترنت. تحقّق من الشبكة وحاول مرة أخرى.</string>
+    <string name="portal_server_error">خادم MAURIMAX لا يستجيب حالياً. حاول بعد قليل.</string>
+    <string name="portal_unexpected">تعذّر فهم رد الخادم. حاول مرة أخرى أو تواصل مع الدعم.</string>
+</resources>

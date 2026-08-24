@@ -17,10 +17,30 @@ object XtreamClient {
         explicitNulls = false
     }
 
+    /**
+     * Panels commonly sit behind filtering that rejects an unfamiliar client, and
+     * OkHttp's default agent is a frequent casualty — the request never reaches
+     * the API and the app looks like it has no catalogue. Presenting a player-like
+     * agent is what every IPTV client does for the same reason.
+     */
+    private const val USER_AGENT = "MAURIMAX/1.0 (Android) ExoPlayer"
+
     fun create(portalUrl: String): XtreamApi {
         val http = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(20, TimeUnit.SECONDS)
+            // A full catalogue can be tens of thousands of entries on a large
+            // panel, so the read budget is generous.
+            .readTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(90, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("User-Agent", USER_AGENT)
+                        .header("Accept", "application/json, text/plain, */*")
+                        .build(),
+                )
+            }
             .build()
 
         return Retrofit.Builder()

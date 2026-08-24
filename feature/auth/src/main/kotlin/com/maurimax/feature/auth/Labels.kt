@@ -2,17 +2,18 @@ package com.maurimax.feature.auth
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import com.maurimax.core.data.LoginFailure
+import com.maurimax.core.data.PortalFailure
+import com.maurimax.core.data.messageRes
 
 /**
- * Customer-facing wording for a failed sign-in.
- *
- * A customer cannot fix a server outage, so the unreachable case tells them what
- * to check rather than surfacing the underlying exception.
+ * Customer-facing wording for a failed sign-in. The cause and its message live
+ * in :core:data so the catalogue screens say the same thing about the same
+ * failure.
  */
 @Composable
-internal fun LoginFailure.message(): String = when (this) {
-    LoginFailure.BadCredentials -> stringResource(R.string.auth_error_credentials)
-    is LoginFailure.Inactive -> stringResource(R.string.auth_error_inactive, status)
-    is LoginFailure.Unreachable -> stringResource(R.string.auth_error_unreachable)
-}
+internal fun PortalFailure.message(): String =
+    if (this is PortalFailure.Inactive) {
+        stringResource(messageRes, status)
+    } else {
+        stringResource(messageRes)
+    }

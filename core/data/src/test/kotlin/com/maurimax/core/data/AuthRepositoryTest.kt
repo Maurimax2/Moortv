@@ -64,7 +64,7 @@ class AuthRepositoryTest {
 
         val result = auth.signIn("bob", "wrong")
 
-        assertEquals(LoginFailure.BadCredentials, (result as LoginResult.Failure).reason)
+        assertEquals(PortalFailure.BadCredentials, (result as LoginResult.Failure).reason)
         assertNull(store.load())
     }
 
@@ -75,17 +75,17 @@ class AuthRepositoryTest {
 
         val result = auth.signIn("bob", "hunter2")
 
-        assertEquals(LoginFailure.Inactive("Expired"), (result as LoginResult.Failure).reason)
+        assertEquals(PortalFailure.Inactive("Expired"), (result as LoginResult.Failure).reason)
         assertNull(store.load())
     }
 
     @Test
-    fun `an unreachable portal is not reported as bad credentials`() = runTest {
+    fun `a network failure is not reported as bad credentials`() = runTest {
         val (auth, _) = repo(FakeApi())
 
         val result = auth.signIn("bob", "hunter2")
 
-        assertTrue((result as LoginResult.Failure).reason is LoginFailure.Unreachable)
+        assertTrue((result as LoginResult.Failure).reason is PortalFailure.NoConnection)
     }
 
     @Test
