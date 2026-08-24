@@ -14,8 +14,6 @@ data class MediaItem(
     val id: String,
     val title: String,
     val kind: MediaKind,
-    /** Fallback artwork tint, as 0xAARRGGBB, shown until [artworkUrl] loads. */
-    val artworkTint: Long,
     /** Channel logo or poster from the portal. Empty when the panel has none. */
     val artworkUrl: String = "",
     /** Panel-supplied score, already formatted. Empty when the panel has none. */

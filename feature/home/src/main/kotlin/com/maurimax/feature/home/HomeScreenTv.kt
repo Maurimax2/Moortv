@@ -44,6 +44,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Text
 import com.maurimax.core.designsystem.Artwork
+import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.messageRes
@@ -146,8 +147,7 @@ private fun Backdrop(item: MediaItem) {
             Artwork(
                 url = current.artworkUrl,
                 title = "",
-                fallbackTint = current.artworkTint,
-                crop = true,
+                kind = ArtworkKind.POSTER,
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(Brand.HERO_ART_FRACTION),
@@ -364,9 +364,7 @@ private fun TvTile(
         Artwork(
             url = item.artworkUrl,
             title = item.title,
-            fallbackTint = item.artworkTint,
-            crop = portrait,
-            fallbackTextSize = 15.sp,
+            kind = if (portrait) ArtworkKind.POSTER else ArtworkKind.CHANNEL_LOGO,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(tileHeight),
@@ -401,11 +399,12 @@ private fun TvErrorPanel(
     }
 }
 
-/** Rating first on TV when the panel has one; it is the strongest signal there. */
+/** Rating first on TV when the panel has a real one; "0" means unscored. */
 @Composable
 private fun heroLabel(item: MediaItem): String {
     val kind = stringResource(item.kind.labelRes)
-    return if (item.rating.isBlank()) kind else "★ ${item.rating}  ·  $kind"
+    val score = item.rating.trim().toDoubleOrNull()
+    return if (score == null || score <= 0.0) kind else "★ ${item.rating.trim()}  ·  $kind"
 }
 
 /** The specific reason the catalogue could not load, in the customer's language. */

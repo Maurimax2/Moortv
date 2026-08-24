@@ -1,6 +1,7 @@
 package com.maurimax.core.designsystem
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,63 +28,75 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
-import androidx.compose.ui.platform.LocalContext
+
+/** What kind of image a tile holds, which decides the surface underneath it. */
+enum class ArtworkKind {
+    /**
+     * Channel logos. Almost universally authored as light marks on black, so
+     * they get a dark plate in both themes — on a light tile they read as black
+     * boxes floating on paper.
+     */
+    CHANNEL_LOGO,
+
+    /** Film and series key art. Fills the tile, so the plate barely shows. */
+    POSTER,
+}
 
 /**
  * Artwork with a graceful failure mode.
  *
- * Panels routinely serve a missing, broken or tiny logo, and a grey box for
- * every third tile is what makes a catalogue look cheap. Until the image
- * resolves — and permanently, if it never does — the tile shows a tinted plate
- * carrying the title, which reads as deliberate rather than broken.
+ * Panels routinely serve a missing or broken image. The plate underneath is a
+ * single neutral surface rather than a colour derived from the title: a wall of
+ * differently tinted rectangles reads as a rendering fault, not as design. When
+ * there is no image at all the tile carries the name, because an empty coloured
+ * block tells the customer nothing.
  */
 @Composable
 fun Artwork(
     url: String,
     title: String,
-    fallbackTint: Long,
+    kind: ArtworkKind,
     modifier: Modifier = Modifier,
-    /** Portrait key art is cropped to fill; wide channel logos are fit inside. */
-    crop: Boolean = true,
-    fallbackTextSize: TextUnit = 13.sp,
-    /**
-     * Whether the fallback plate carries the title. False where the layout
-     * already labels the tile underneath — printing the name twice is the
-     * clearest tell of a cheap catalogue.
-     */
-    showFallbackLabel: Boolean = true,
 ) {
     var loaded by remember(url) { mutableStateOf(false) }
     var failed by remember(url) { mutableStateOf(false) }
 
+    val colors = MaurimaxTheme.colors
+    val onDarkPlate = kind == ArtworkKind.CHANNEL_LOGO
+
+    val plate = if (onDarkPlate) {
+        Brush.linearGradient(listOf(Color(0xFF14101C), Color(0xFF0C0812)))
+    } else {
+        Brush.linearGradient(listOf(colors.surfaceRaised, colors.surface))
+    }
+
     val imageAlpha by animateFloatAsState(
         targetValue = if (loaded) 1f else 0f,
+        animationSpec = tween(durationMillis = 180),
         label = "artwork-fade",
     )
 
-    val light = MaurimaxTheme.colors.isLight
-    Box(modifier = modifier.background(plateBrush(fallbackTint, light))) {
-        // The plate stays behind the image rather than being swapped out, so a
-        // logo with transparency has something considered to sit on.
-        if ((!loaded || failed) && showFallbackLabel) {
+    Box(modifier = modifier.background(plate)) {
+        // The name shows until artwork arrives, and stays if none ever does.
+        if (!loaded || failed) {
             BasicText(
                 text = title,
                 style = TextStyle(
-                    // On a pale plate white would vanish, so the label follows the theme.
-                    color = if (light) {
-                        MaurimaxTheme.colors.textSecondary
+                    color = if (onDarkPlate) {
+                        Color.White.copy(alpha = 0.72f)
                     } else {
-                        Color.White.copy(alpha = 0.92f)
+                        colors.textTertiary
                     },
+                    fontSize = fallbackSizeFor(title),
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = fallbackTextSize,
                     textAlign = TextAlign.Center,
+                    lineHeight = fallbackSizeFor(title) * 1.25f,
                 ),
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(Spacing.sm),
+                    .padding(horizontal = Spacing.sm),
             )
         }
 
@@ -93,8 +106,9 @@ fun Artwork(
                     .data(url)
                     .crossfade(false)
                     .build(),
-                contentDescription = title,
-                contentScale = if (crop) ContentScale.Crop else ContentScale.Fit,
+                contentDescription = null,
+                // A logo is fitted with breathing room; key art fills the frame.
+                contentScale = if (onDarkPlate) ContentScale.Fit else ContentScale.Crop,
                 onState = { state ->
                     when (state) {
                         is AsyncImagePainter.State.Success -> loaded = true
@@ -104,35 +118,16 @@ fun Artwork(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(if (crop) Spacing.xs * 0 else Spacing.sm)
+                    .then(if (onDarkPlate) Modifier.padding(Spacing.md) else Modifier)
                     .alpha(imageAlpha),
             )
         }
     }
 }
 
-/**
- * A two-stop wash from the item's tint, so plates differ but stay in family.
- *
- * On light the tint is lightened rather than shown at full strength: a
- * saturated block on paper reads as an error state, while the same block on
- * near-black reads as artwork.
- */
-private fun plateBrush(tint: Long, light: Boolean): Brush {
-    val base = Color(tint)
-    return if (light) {
-        Brush.linearGradient(
-            listOf(
-                base.copy(alpha = 0.30f).compositeOver(Color.White),
-                base.copy(alpha = 0.14f).compositeOver(Color.White),
-            ),
-        )
-    } else {
-        Brush.linearGradient(
-            listOf(
-                base.copy(alpha = 0.92f),
-                base.copy(alpha = 0.45f),
-            ),
-        )
-    }
+/** Long channel names need to step down or they truncate to nothing useful. */
+private fun fallbackSizeFor(title: String): TextUnit = when {
+    title.length > 28 -> 11.sp
+    title.length > 16 -> 12.sp
+    else -> 13.sp
 }

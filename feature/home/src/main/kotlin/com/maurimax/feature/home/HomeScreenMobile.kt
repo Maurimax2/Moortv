@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Artwork
+import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.messageRes
 import com.maurimax.core.designsystem.Corners
@@ -187,8 +188,8 @@ private fun MobileRow(row: ContentRow, tab: CatalogTab, onItemClick: (MediaItem)
         Text(
             text = row.title,
             color = MaurimaxTheme.colors.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = Spacing.md),
@@ -207,8 +208,8 @@ private fun MobileRow(row: ContentRow, tab: CatalogTab, onItemClick: (MediaItem)
 @Composable
 private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
     val portrait = tab.usesPortraitArt
-    val tileWidth = if (portrait) 116.dp else 148.dp
-    val tileHeight = if (portrait) 174.dp else 84.dp
+    val tileWidth = if (portrait) 112.dp else 132.dp
+    val tileHeight = if (portrait) 168.dp else 76.dp
 
     Column(
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
@@ -226,9 +227,7 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
             Artwork(
                 url = item.artworkUrl,
                 title = item.title,
-                fallbackTint = item.artworkTint,
-                crop = portrait,
-                showFallbackLabel = false,
+                kind = if (portrait) ArtworkKind.POSTER else ArtworkKind.CHANNEL_LOGO,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -248,15 +247,19 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
             text = item.title,
             color = MaurimaxTheme.colors.textPrimary,
             fontSize = 12.sp,
-            maxLines = 1,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 15.sp,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = itemLabel(item),
-            color = MaurimaxTheme.colors.textTertiary,
-            fontSize = 11.sp,
-            maxLines = 1,
-        )
+        itemLabel(item)?.let { label ->
+            Text(
+                text = label,
+                color = MaurimaxTheme.colors.textTertiary,
+                fontSize = 11.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -289,11 +292,17 @@ private fun ErrorPanel(
     }
 }
 
-/** A rating when the panel supplies one, otherwise what the tile is. */
+/**
+ * The caption under a tile: a rating when the panel supplies a real one.
+ *
+ * Panels send "0" for anything unrated, and printing "★ 0" on half a catalogue
+ * makes every title look badly reviewed rather than simply unscored.
+ */
 @Composable
-private fun itemLabel(item: MediaItem): String {
-    val kind = stringResource(item.kind.labelRes)
-    return if (item.rating.isBlank()) kind else "$kind · ★ ${item.rating}"
+private fun itemLabel(item: MediaItem): String? {
+    val score = item.rating.trim().toDoubleOrNull()
+    if (score == null || score <= 0.0) return null
+    return "★ ${item.rating.trim()}"
 }
 
 /** The specific reason the catalogue could not load, in the customer's language. */

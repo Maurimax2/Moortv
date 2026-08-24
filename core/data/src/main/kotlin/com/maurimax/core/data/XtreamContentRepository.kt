@@ -157,7 +157,6 @@ internal fun Movie.toMediaItem() = MediaItem(
     id = "movie-$streamId",
     title = name,
     kind = MediaKind.MOVIE,
-    artworkTint = tintFor(name),
     artworkUrl = posterUrl,
     rating = rating,
 )
@@ -166,43 +165,16 @@ internal fun Series.toMediaItem() = MediaItem(
     id = "series-$seriesId",
     title = name,
     kind = MediaKind.SERIES,
-    artworkTint = tintFor(name),
     artworkUrl = posterUrl,
     rating = rating,
     description = plot,
 )
 
-/**
- * Live channels have no year, genre or runtime, so the shared row model carries
- * the channel number and a tint derived from the name — stable per channel, so
- * a channel keeps its colour between launches.
- */
+/** Live channels have no year, rating or runtime; the kind carries the label. */
 internal fun LiveChannel.toMediaItem() = MediaItem(
     id = "live-$streamId",
     title = name,
     kind = if (hasCatchUp) MediaKind.CATCH_UP else MediaKind.LIVE,
-    artworkTint = tintFor(name),
     artworkUrl = logoUrl,
 )
 
-/** Deterministic pleasant tint from a name, used until artwork loads. */
-internal fun tintFor(name: String): Long {
-    val hue = ((name.hashCode().toLong() and 0xFFFFFF) % 360).toFloat()
-    return hslToArgb(hue, saturation = 0.45f, lightness = 0.38f)
-}
-
-private fun hslToArgb(hue: Float, saturation: Float, lightness: Float): Long {
-    val c = (1f - kotlin.math.abs(2f * lightness - 1f)) * saturation
-    val x = c * (1f - kotlin.math.abs((hue / 60f) % 2f - 1f))
-    val m = lightness - c / 2f
-    val (r, g, b) = when {
-        hue < 60f -> Triple(c, x, 0f)
-        hue < 120f -> Triple(x, c, 0f)
-        hue < 180f -> Triple(0f, c, x)
-        hue < 240f -> Triple(0f, x, c)
-        hue < 300f -> Triple(x, 0f, c)
-        else -> Triple(c, 0f, x)
-    }
-    fun channel(v: Float) = (((v + m) * 255f).toInt().coerceIn(0, 255)).toLong()
-    return (0xFFL shl 24) or (channel(r) shl 16) or (channel(g) shl 8) or channel(b)
-}
