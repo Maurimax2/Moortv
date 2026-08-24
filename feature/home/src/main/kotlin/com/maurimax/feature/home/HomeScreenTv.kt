@@ -150,10 +150,9 @@ private fun Backdrop(item: MediaItem) {
                     .fillMaxHeight(Brand.HERO_ART_FRACTION),
             )
         }
-        // Three washes. The first darkens the artwork itself so overlaid copy is
-        // legible whatever the poster looks like — needed in light mode too. The
-        // other two fade the art into this theme's ground.
-        Box(modifier = Modifier.fillMaxSize().background(Scrims.onArtwork))
+        // Two fades carry the artwork down to this theme's ground: one from the
+        // copy side, one from the bottom. Hero copy therefore sits on the page
+        // rather than on the poster, which is why it takes theme text colours.
         Box(modifier = Modifier.fillMaxSize().background(Scrims.heroSide()))
         Box(modifier = Modifier.fillMaxSize().background(Scrims.heroFade()))
     }
@@ -257,9 +256,9 @@ private fun TvCatalog(
 private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
     Column(modifier = modifier.width(560.dp)) {
         Text(
-            // On artwork, not on the page: white in both themes, over the scrim.
+            // Theme text, not white: over a light ground white copy disappears.
             text = item.title,
-            color = Color.White,
+            color = MaurimaxTheme.colors.textPrimary,
             fontWeight = FontWeight.Black,
             fontSize = 34.sp,
             lineHeight = 38.sp,
