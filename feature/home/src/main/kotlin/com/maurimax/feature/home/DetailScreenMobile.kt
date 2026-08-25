@@ -38,8 +38,6 @@ import androidx.compose.ui.unit.sp
 import com.maurimax.core.data.Download
 import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
-import com.maurimax.core.data.Download
-import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme

@@ -40,8 +40,6 @@ import androidx.tv.material3.Text
 import com.maurimax.core.data.Download
 import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
-import com.maurimax.core.data.Download
-import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
