@@ -1,5 +1,7 @@
 package com.maurimax.feature.auth
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +33,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,10 +59,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.data.AppLocale
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.BrandLockup
+import com.maurimax.core.designsystem.MaurimaxDisplayFamily
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Showcase
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.Credentials
+import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreenMobile(
@@ -134,15 +139,18 @@ fun LoginScreenMobile(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + Spacing.lg,
                 ),
         ) {
-            BrandLockup(fontSize = 25.sp, markHeight = 40.dp)
+            BrandLockup(fontSize = 34.sp, markHeight = 54.dp)
 
             Text(
                 text = stringResource(R.string.brand_tagline),
-                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = MaurimaxDisplayFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                lineHeight = 28.sp,
                 color = colors.textSecondary,
                 modifier = Modifier
                     .padding(top = Spacing.md)
-                    .widthIn(max = 280.dp),
+                    .widthIn(max = 300.dp),
             )
 
             Spacer(Modifier.height(Spacing.xl))
@@ -182,26 +190,42 @@ fun LoginScreenMobile(
 /**
  * The artwork behind the form.
  *
- * One title, held still, carried down into the page by a gradient that reaches
- * solid ground well before the first field — so the image is atmosphere rather
- * than something the copy has to fight. A drifting collage was tried first and
- * read as a screensaver.
+ * It changes on a slow cycle — football, film, football, film — and opens on
+ * the football, because that is what most of this audience came for and the
+ * first frame is the only one guaranteed to be seen. Seven seconds a frame
+ * with a long dissolve: fast enough to notice on the way in, slow enough that
+ * nothing moves while somebody is typing a password.
+ *
+ * A gradient carries it down to solid ground before the first field, so the
+ * image stays atmosphere rather than something the copy has to fight.
  */
 @Composable
 private fun Backdrop() {
     val colors = MaurimaxTheme.colors
-    // Stable for the install rather than random per frame: a backdrop that
-    // changes while you are typing looks like a fault.
-    val art = remember { Showcase.pick(Showcase.all, "sign-in") }
+    var index by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(7_000)
+            index = (index + 1) % Showcase.backdrops.size
+        }
+    }
 
     Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f)) {
-        Image(
-            painter = painterResource(art.poster),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,
+        Crossfade(
+            targetState = index,
+            animationSpec = tween(durationMillis = 1_400),
+            label = "sign-in backdrop",
             modifier = Modifier.fillMaxSize(),
-        )
+        ) { current ->
+            Image(
+                painter = painterResource(Showcase.backdrops[current]),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -87,3 +87,15 @@ val MaurimaxTypography = Typography(
 
 /** For the few places that set a family directly rather than taking a style. */
 val MaurimaxFontFamily: FontFamily = Cairo
+
+/**
+ * Tajawal, for the positioning line under the lockup.
+ *
+ * That one line is brand rather than interface, and set in the same face as
+ * the rest of the screen it read as another label. Tajawal is flatter and more
+ * geometric than Cairo, which gives it the weight of a statement while still
+ * belonging beside it.
+ */
+val MaurimaxDisplayFamily: FontFamily = FontFamily(
+    Font(R.font.tajawal_bold, FontWeight.Bold),
+)

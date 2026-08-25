@@ -74,6 +74,27 @@ object Showcase {
     val leagues: List<League> = LeagueStrip
 
     /**
+     * What plays behind sign-in, in order.
+     *
+     * Football, film, football, film — and it opens on the football, because
+     * that is what most of this audience came for and the first frame is the
+     * only one guaranteed to be seen. The football frames are composed here
+     * rather than found: the supplied set has cut-out players and league
+     * crests but no wide artwork, so each one is a player standing on a wash
+     * of their competition's colour with the crest behind them.
+     */
+    val backdrops: List<Int> = listOf(
+        R.drawable.backdrop_laliga,
+        R.drawable.poster_batman,
+        R.drawable.backdrop_premier,
+        R.drawable.poster_casadepapel,
+        R.drawable.backdrop_ucl,
+        R.drawable.poster_got,
+        R.drawable.backdrop_saudi,
+        R.drawable.poster_oppenheimer,
+    )
+
+    /**
      * A stable pick for a given key.
      *
      * Deliberately not random: a hero that changes on every recomposition
