@@ -77,13 +77,15 @@ class XtreamContentRepository(
 
         val filled = mutableListOf<ContentRow>()
         for (batch in wanted.chunked(CONCURRENT_CATEGORIES)) {
-            val loaded = coroutineScope {
+            val loaded: List<Pair<Category, List<MediaItem>>> = coroutineScope {
                 batch.map { category ->
                     async {
                         // One category failing is one missing rail, not an
                         // empty screen — panels routinely have a category that
                         // errors while the rest are fine.
-                        category to runCatching { itemsIn(tab, category.id) }.getOrDefault(emptyList())
+                        val items = runCatching { itemsIn(tab, category.id) }
+                            .getOrDefault(emptyList<MediaItem>())
+                        category to items
                     }
                 }.awaitAll()
             }
