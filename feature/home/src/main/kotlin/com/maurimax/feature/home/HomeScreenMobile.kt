@@ -68,6 +68,8 @@ fun HomeScreenMobile(
         onQueryChange = viewModel::onQueryChange,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
+        inMyList = { item -> state.favourites.any { it.id == item.id } },
+        onToggleMyList = viewModel::toggleFavourite,
         account = account,
         onSwitchAccount = onSwitchAccount,
         modifier = modifier,
@@ -88,6 +90,8 @@ fun HomeScreenMobile(
     onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
+    inMyList: (MediaItem) -> Boolean = { false },
+    onToggleMyList: (MediaItem) -> Unit = {},
     account: String = "",
     onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -108,7 +112,12 @@ fun HomeScreenMobile(
 
             state.isEmpty -> EmptySection(state.tab)
 
-            else -> Catalogue(state = state, onItemClick = onItemClick)
+            else -> Catalogue(
+                state = state,
+                onItemClick = onItemClick,
+                inMyList = inMyList,
+                onToggleMyList = onToggleMyList,
+            )
         }
 
         TopBar(
@@ -127,9 +136,14 @@ fun HomeScreenMobile(
 }
 
 @Composable
-private fun Catalogue(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
+private fun Catalogue(
+    state: HomeUiState,
+    onItemClick: (MediaItem) -> Unit,
+    inMyList: (MediaItem) -> Boolean,
+    onToggleMyList: (MediaItem) -> Unit,
+) {
     val rows = state.railsFor()
-    val hero = if (state.query.isBlank()) state.heroItem() else null
+    val hero = if (state.query.isBlank()) state.heroItems() else emptyList()
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -139,9 +153,14 @@ private fun Catalogue(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
             bottom = 96.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        if (hero != null) {
+        if (hero.isNotEmpty()) {
             item(key = "hero") {
-                Hero(item = hero, onPlay = onItemClick, onOpen = onItemClick)
+                Hero(
+                    items = hero,
+                    onPlay = onItemClick,
+                    inMyList = inMyList,
+                    onToggleMyList = onToggleMyList,
+                )
             }
         } else {
             item(key = "top-space") {
@@ -304,9 +323,7 @@ private fun LoadingCatalogue(tab: CatalogTab) {
 private fun EmptySection(tab: CatalogTab) {
     Box(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = stringResource(
-                if (tab == CatalogTab.SPORTS) R.string.sports_empty else R.string.home_empty,
-            ),
+            text = stringResource(R.string.home_empty),
             style = MaterialTheme.typography.bodyLarge,
             color = MaurimaxTheme.colors.textSecondary,
             modifier = Modifier.align(Alignment.Center).padding(Spacing.lg),
@@ -410,10 +427,22 @@ private fun HomeUiState.railsFor(): List<ContentRow> {
 }
 
 /**
- * The title the screen opens on.
+ * The handful of titles the screen opens on, in rotation.
  *
- * The first thing in the first catalogue rail rather than anything personal:
- * the hero is the section introducing itself, and leading with something the
- * customer has already watched makes the whole screen look like a history page.
+ * Taken from the panel's own catalogue rather than from anything bundled — the
+ * hero has to be something the customer can actually press play on. Titles that
+ * came with their own artwork are preferred, since the hero is mostly image and
+ * a stand-in poster under a name from the server is a worse introduction than a
+ * real one.
+ *
+ * Never from continue-watching or favourites: the hero is the section
+ * introducing itself, and leading with something already watched makes the
+ * whole screen look like a history page.
  */
-private fun HomeUiState.heroItem(): MediaItem? = visibleRows.firstOrNull()?.items?.firstOrNull()
+private fun HomeUiState.heroItems(): List<MediaItem> {
+    val catalogue = visibleRows.take(4).flatMap { it.items.take(6) }
+    val withArt = catalogue.filter { it.artworkUrl.isNotBlank() }
+    return (withArt.ifEmpty { catalogue })
+        .distinctBy { it.id }
+        .take(3)
+}

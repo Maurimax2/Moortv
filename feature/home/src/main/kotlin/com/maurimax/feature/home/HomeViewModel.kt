@@ -74,7 +74,7 @@ data class HomeUiState(
      */
     fun personalFor(tab: CatalogTab): Pair<List<MediaItem>, List<MediaItem>> {
         fun matches(item: MediaItem) = when (tab) {
-            CatalogTab.LIVE, CatalogTab.SPORTS -> item.isLive
+            CatalogTab.LIVE -> item.isLive
             CatalogTab.MOVIES -> item.kind == MediaKind.MOVIE
             CatalogTab.SERIES -> item.kind == MediaKind.SERIES
         }
@@ -92,7 +92,7 @@ data class HomeUiState(
                 when (tab) {
                     CatalogTab.MOVIES -> it.kind == MediaKind.MOVIE
                     CatalogTab.SERIES -> it.kind == MediaKind.SERIES
-                    CatalogTab.LIVE, CatalogTab.SPORTS -> false
+                    CatalogTab.LIVE -> false
                 }
             }
         }

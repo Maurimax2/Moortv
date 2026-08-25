@@ -16,7 +16,6 @@ class FakeContentRepository : ContentRepository {
     override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flowOf(
         when (tab) {
             CatalogTab.LIVE -> live
-            CatalogTab.SPORTS -> live
             CatalogTab.MOVIES -> movies
             CatalogTab.SERIES -> series
         },

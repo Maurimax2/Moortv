@@ -13,12 +13,10 @@
     <string name="action_favourite_add">Ajouter aux favoris</string>
     <string name="action_favourite_remove">Retirer des favoris</string>
 
-
     <string name="action_play">Lecture</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_movies">Films</string>
     <string name="nav_series">Séries</string>
-    <string name="nav_sports">Sport</string>
     <string name="nav_profile">Compte</string>
     <!-- %1$d is how many titles are kept on the device. -->
     <string name="profile_downloads">%1$d titre(s) sur cet appareil</string>
@@ -28,6 +26,7 @@
     <string name="profile_theme_dark">Sombre</string>
     <string name="profile_theme_light">Clair</string>
     <string name="action_my_list">Ma liste</string>
+    <string name="action_in_my_list">Dans ma liste</string>
     <string name="action_resume">Reprendre</string>
     <string name="action_back">Retour</string>
     <string name="detail_episodes">Épisodes</string>
@@ -43,17 +42,11 @@
     <string name="detail_minutes">%1$d min</string>
 
     <string name="search_hint">Rechercher une chaîne, un film ou une série</string>
-    <string name="search_clear">Effacer</string>
     <string name="search_no_results">Aucun résultat pour \"%1$s\"</string>
 
     <string name="tab_live">Direct</string>
-    <string name="tab_sports">Sport</string>
     <string name="tab_movies">Films</string>
     <string name="tab_series">Séries</string>
-
-    <string name="sports_band_title">Sport</string>
-    <string name="sports_band_subtitle">Tous les matchs et les grands championnats au même endroit.</string>
-    <string name="sports_empty">Aucune chaîne de sport dans votre abonnement pour le moment.</string>
 
     <string name="kind_live">En direct</string>
     <string name="kind_catch_up">Replay</string>

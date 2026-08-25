@@ -145,13 +145,7 @@ fun HomeScreenTv(
                     )
 
                     rows.isEmpty() -> Text(
-                        text = stringResource(
-                            if (state.tab == CatalogTab.SPORTS) {
-                                R.string.sports_empty
-                            } else {
-                                R.string.home_empty
-                            },
-                        ),
+                        text = stringResource(R.string.home_empty),
                         color = colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -296,18 +290,7 @@ private fun TvCatalog(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (tab == CatalogTab.SPORTS) {
-            SportsBand(
-                height = 132.dp,
-                titleSize = 30,
-                badgeSize = 30.dp,
-                modifier = Modifier.padding(
-                    start = Spacing.tvOverscan,
-                    end = Spacing.tvOverscan,
-                    top = Spacing.sm,
-                ),
-            )
-        } else if (hero != null) {
+        if (hero != null) {
             HeroCopy(
                 item = hero,
                 modifier = Modifier.padding(

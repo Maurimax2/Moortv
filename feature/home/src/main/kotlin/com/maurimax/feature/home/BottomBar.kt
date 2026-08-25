@@ -41,7 +41,6 @@ private object Icons {
     val home = DS.drawable.ic_nav_home
     val movies = DS.drawable.ic_nav_movies
     val series = DS.drawable.ic_nav_series
-    val sports = DS.drawable.ic_nav_sports
     val profile = DS.drawable.ic_nav_profile
 }
 
@@ -60,10 +59,10 @@ private data class NavItem(
 /**
  * The bottom bar.
  *
- * Five places, not six. A separate Home alongside Live would be two names for
- * the same screen on a service whose front page is its channels — the aggregate
- * home that would justify the split needs rails from three sections at once,
- * which is three times the requests on a panel that is already slow.
+ * Four places, and each one is something the panel actually serves. There is no
+ * sports tab: this panel has no sports section, its football is live channels
+ * inside the live catalogue, and a tab that has to invent its own contents by
+ * reading category names is a tab that will one day be empty.
  *
  * It sits on a gradient rather than a filled bar, so the catalogue runs
  * underneath it and the screen stays one surface instead of two stacked ones.
@@ -80,7 +79,6 @@ fun MaurimaxBottomBar(
             NavItem(Destination.Section(CatalogTab.LIVE), Icons.home, R.string.nav_home),
             NavItem(Destination.Section(CatalogTab.MOVIES), Icons.movies, R.string.nav_movies),
             NavItem(Destination.Section(CatalogTab.SERIES), Icons.series, R.string.nav_series),
-            NavItem(Destination.Section(CatalogTab.SPORTS), Icons.sports, R.string.nav_sports),
             NavItem(Destination.Profile, Icons.profile, R.string.nav_profile),
         )
     }

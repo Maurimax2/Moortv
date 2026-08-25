@@ -18,7 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,7 @@ import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Showcase
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.MediaItem
+import kotlinx.coroutines.delay
 
 /**
  * The title the screen opens on.
@@ -133,11 +138,18 @@ fun Hero(
                     primary = true,
                     onClick = { onPlay(item) },
                 )
+                val saved = inMyList(item)
                 HeroAction(
-                    label = stringResource(R.string.action_my_list),
-                    icon = com.maurimax.core.designsystem.R.drawable.ic_plus,
+                    label = stringResource(
+                        if (saved) R.string.action_in_my_list else R.string.action_my_list,
+                    ),
+                    icon = if (saved) {
+                        com.maurimax.core.designsystem.R.drawable.ic_check
+                    } else {
+                        com.maurimax.core.designsystem.R.drawable.ic_plus
+                    },
                     primary = false,
-                    onClick = { onOpen(item) },
+                    onClick = { onToggleMyList(item) },
                 )
             }
         }

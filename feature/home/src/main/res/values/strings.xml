@@ -13,12 +13,10 @@
     <string name="action_favourite_add">أضف إلى المفضلة</string>
     <string name="action_favourite_remove">إزالة من المفضلة</string>
 
-
     <string name="action_play">تشغيل</string>
     <string name="nav_home">الرئيسية</string>
     <string name="nav_movies">أفلام</string>
     <string name="nav_series">مسلسلات</string>
-    <string name="nav_sports">الرياضة</string>
     <string name="nav_profile">حسابي</string>
     <!-- %1$d is how many titles are kept on the device. -->
     <string name="profile_downloads">%1$d عنوان محفوظ على الجهاز</string>
@@ -28,6 +26,7 @@
     <string name="profile_theme_dark">داكن</string>
     <string name="profile_theme_light">فاتح</string>
     <string name="action_my_list">قائمتي</string>
+    <string name="action_in_my_list">في قائمتي</string>
     <string name="action_resume">متابعة</string>
     <string name="action_back">رجوع</string>
     <string name="detail_episodes">الحلقات</string>
@@ -43,17 +42,11 @@
     <string name="detail_minutes">%1$d د</string>
 
     <string name="search_hint">ابحث عن قناة أو فيلم أو مسلسل</string>
-    <string name="search_clear">مسح</string>
     <string name="search_no_results">لا توجد نتائج لـ \"%1$s\"</string>
 
     <string name="tab_live">البث المباشر</string>
-    <string name="tab_sports">الرياضة</string>
     <string name="tab_movies">أفلام</string>
     <string name="tab_series">مسلسلات</string>
-
-    <string name="sports_band_title">الرياضة</string>
-    <string name="sports_band_subtitle">كل المباريات والبطولات الكبرى في مكان واحد.</string>
-    <string name="sports_empty">لا توجد قنوات رياضية في اشتراكك حالياً.</string>
 
     <string name="kind_live">مباشر</string>
     <string name="kind_catch_up">إعادة المشاهدة</string>

@@ -11,7 +11,6 @@ import com.maurimax.core.model.MediaKind
 import com.maurimax.core.model.Movie
 import com.maurimax.core.model.Season
 import com.maurimax.core.model.Series
-import com.maurimax.core.model.Sports
 import com.maurimax.core.network.XtreamApi
 import com.maurimax.core.network.XtreamUrls
 import com.maurimax.core.network.dto.CategoryDto
@@ -67,9 +66,7 @@ class XtreamContentRepository(
      * time one small request takes rather than after all of them.
      */
     override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flow {
-        val wanted = categoriesFor(tab)
-            .let { all -> if (tab == CatalogTab.SPORTS) all.filterSport() else all }
-            .take(maxRows)
+        val wanted = categoriesFor(tab).take(maxRows)
 
         if (wanted.isEmpty()) {
             emit(emptyList())
@@ -100,19 +97,14 @@ class XtreamContentRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    /** Majors first: somebody opening the football is looking for tonight. */
-    private fun List<Category>.filterSport() =
-        filter { Sports.isSport(it.name) }.sortedBy { Sports.rank(it.name) }
-
     private suspend fun categoriesFor(tab: CatalogTab): List<Category> = when (tab) {
-        // Sport is a view of the live catalogue, not a section the panel has.
-        CatalogTab.LIVE, CatalogTab.SPORTS -> liveCategories()
+        CatalogTab.LIVE -> liveCategories()
         CatalogTab.MOVIES -> movieCategories()
         CatalogTab.SERIES -> seriesCategories()
     }
 
     private suspend fun itemsIn(tab: CatalogTab, categoryId: String): List<MediaItem> = when (tab) {
-        CatalogTab.LIVE, CatalogTab.SPORTS -> liveChannels(categoryId).map { it.toItem() }
+        CatalogTab.LIVE -> liveChannels(categoryId).map { it.toItem() }
         CatalogTab.MOVIES -> movies(categoryId).map { it.toItem() }
         CatalogTab.SERIES -> series(categoryId).map { it.toItem() }
     }
