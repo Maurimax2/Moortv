@@ -4,6 +4,7 @@ import android.content.Context
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.MediaKind
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 /**
@@ -117,11 +118,15 @@ object Library {
     private fun read(context: Context, key: String): List<SavedItem> {
         val raw = prefs(context).getString(key, null) ?: return emptyList()
         // A stored blob written by an older build must never crash the app.
-        return runCatching { json.decodeFromString<List<SavedItem>>(raw) }.getOrDefault(emptyList())
+        return runCatching {
+            json.decodeFromString(ListSerializer(SavedItem.serializer()), raw)
+        }.getOrDefault(emptyList())
     }
 
     private fun write(context: Context, key: String, items: List<SavedItem>) {
-        prefs(context).edit().putString(key, json.encodeToString(items)).apply()
+        prefs(context).edit()
+            .putString(key, json.encodeToString(ListSerializer(SavedItem.serializer()), items))
+            .apply()
     }
 
     private fun prefs(context: Context) =
