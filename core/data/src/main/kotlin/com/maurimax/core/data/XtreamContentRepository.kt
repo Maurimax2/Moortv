@@ -1,6 +1,7 @@
 package com.maurimax.core.data
 
 import com.maurimax.core.model.CatalogTab
+import com.maurimax.core.model.Episode
 import com.maurimax.core.model.Category
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
@@ -8,11 +9,13 @@ import com.maurimax.core.model.LiveChannel
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.MediaKind
 import com.maurimax.core.model.Movie
+import com.maurimax.core.model.Season
 import com.maurimax.core.model.Series
 import com.maurimax.core.model.Sports
 import com.maurimax.core.network.XtreamApi
 import com.maurimax.core.network.XtreamUrls
 import com.maurimax.core.network.dto.CategoryDto
+import com.maurimax.core.network.dto.EpisodeDto
 import com.maurimax.core.network.dto.LiveStreamDto
 import com.maurimax.core.network.dto.SeriesDto
 import com.maurimax.core.network.dto.VodStreamDto
@@ -107,6 +110,50 @@ class XtreamContentRepository(
             listOf(ContentRow(title = "", items = byName.take(maxItemsPerRow * 3).map { it.toItem() }))
         }
     }
+
+    /**
+     * The episodes of one series.
+     *
+     * Panels disagree about almost everything here — the season key, whether an
+     * episode carries its own number, whether the title already says which
+     * episode it is — so what comes back is put in a fixed order rather than
+     * trusted, and anything without an id is dropped: without one there is no
+     * URL to play.
+     */
+    override suspend fun seasons(item: MediaItem): List<Season> = withContext(Dispatchers.IO) {
+        val seriesId = item.id.removePrefix("series-").toIntOrNull()
+        if (item.kind != MediaKind.SERIES || seriesId == null) return@withContext emptyList()
+
+        val response = api.seriesInfo(credentials.username, credentials.password, seriesId)
+        val fallbackArt = response.info?.cover.orEmpty().ifBlank { item.artworkUrl }
+
+        response.episodes
+            .mapNotNull { (key, entries) ->
+                val number = key.trim().toIntOrNull() ?: entries.firstOrNull()?.season ?: return@mapNotNull null
+                val episodes = entries
+                    .filter { it.id.isNotBlank() }
+                    .mapIndexed { index, dto -> dto.toEpisode(number, index + 1, fallbackArt) }
+                    .sortedBy { it.number }
+                if (episodes.isEmpty()) null else Season(number, episodes)
+            }
+            .sortedBy { it.number }
+    }
+
+    private fun EpisodeDto.toEpisode(seasonNumber: Int, position: Int, fallbackArt: String) = Episode(
+        id = "episode-$id",
+        // Some panels title an episode with its own name, some repeat the
+        // series name, and some send nothing at all. A blank one is filled in
+        // by the screen, which knows what season it is drawing.
+        title = title.trim(),
+        season = if (season > 0) season else seasonNumber,
+        number = if (episodeNum > 0) episodeNum else position,
+        plot = info?.plot.orEmpty(),
+        artworkUrl = info?.image.orEmpty().ifBlank { fallbackArt },
+        durationMinutes = (info?.durationSeconds ?: 0) / 60,
+        playbackUrl = id.toIntOrNull()?.let {
+            urls.episode(credentials.username, credentials.password, it, containerExtension)
+        }.orEmpty(),
+    )
 
     suspend fun liveCategories(): List<Category> =
         api.liveCategories(credentials.username, credentials.password).map(CategoryDto::toModel)

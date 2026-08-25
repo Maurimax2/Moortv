@@ -4,6 +4,7 @@ import com.maurimax.core.network.dto.CategoryDto
 import com.maurimax.core.network.dto.LiveStreamDto
 import com.maurimax.core.network.dto.PlayerApiResponse
 import com.maurimax.core.network.dto.SeriesDto
+import com.maurimax.core.network.dto.SeriesInfoResponse
 import com.maurimax.core.network.dto.VodStreamDto
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -59,4 +60,15 @@ interface XtreamApi {
         @Query("password") password: String,
         @Query("category_id") categoryId: String? = null,
     ): List<SeriesDto>
+
+    /**
+     * The episode list for one series. This is the only call that returns
+     * anything playable for a series: the series id itself is a container.
+     */
+    @GET("player_api.php?action=get_series_info")
+    suspend fun seriesInfo(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("series_id") seriesId: Int,
+    ): SeriesInfoResponse
 }

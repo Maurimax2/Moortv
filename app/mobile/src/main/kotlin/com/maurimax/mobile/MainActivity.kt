@@ -27,6 +27,7 @@ import com.maurimax.feature.auth.LoginScreenMobile
 import com.maurimax.feature.auth.LoginViewModel
 import com.maurimax.feature.home.HomeScreenMobile
 import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.toMediaItem
 import com.maurimax.feature.home.DetailScreenMobile
 import com.maurimax.feature.home.HomeViewModel
 import com.maurimax.feature.player.PlayerActivity
@@ -119,7 +120,10 @@ private fun MaurimaxMobileApp(
 
         val chosen = opened
         if (chosen != null) {
-            BackHandler { opened = null }
+            BackHandler {
+                opened = null
+                homeViewModel.closeSeries()
+            }
             DetailScreenMobile(
                 item = chosen,
                 onPlay = play,
@@ -129,7 +133,13 @@ private fun MaurimaxMobileApp(
                 onDownload = { homeViewModel.download(chosen) },
                 onRemoveDownload = { homeViewModel.removeDownload(chosen) },
                 onRefresh = homeViewModel::refreshLibrary,
-                onBack = { opened = null },
+                seasons = homeState.seasons,
+                episodesLoading = homeState.seasonsLoading,
+                onPlayEpisode = { episode -> play(episode.toMediaItem()) },
+                onBack = {
+                    opened = null
+                    homeViewModel.closeSeries()
+                },
             )
         } else {
             HomeScreenMobile(
@@ -140,7 +150,15 @@ private fun MaurimaxMobileApp(
                 onSwitchAccount = loginViewModel::signOut,
                 // A channel plays straight away — nobody wants a page about a
                 // channel. Films and series open their own page first.
-                onItemClick = { item -> if (item.isLive) play(item) else opened = item },
+                onItemClick = { item ->
+                    if (item.isLive) {
+                        play(item)
+                    } else {
+                        opened = item
+                        // A series has no episodes until they are asked for.
+                        homeViewModel.openSeries(item)
+                    }
+                },
             )
         }
     } else {

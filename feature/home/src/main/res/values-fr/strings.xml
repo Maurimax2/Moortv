@@ -13,12 +13,21 @@
     <string name="action_favourite_add">Ajouter aux favoris</string>
     <string name="action_favourite_remove">Retirer des favoris</string>
 
-    <string name="detail_episodes_soon">Les épisodes arrivent dans une prochaine mise à jour.</string>
 
     <string name="action_play">Lecture</string>
     <string name="action_resume">Reprendre</string>
     <string name="action_back">Retour</string>
     <string name="detail_episodes">Épisodes</string>
+    <string name="detail_episodes_loading">Chargement des épisodes…</string>
+    <string name="detail_episodes_none">Aucun épisode disponible pour cette série sur le serveur.</string>
+    <!-- %1$d is the season number. -->
+    <string name="detail_season">Saison %1$d</string>
+    <!-- %1$d is the episode number. -->
+    <string name="detail_episode">Épisode %1$d</string>
+    <!-- %1$d season, %2$d episode. Shown as a short badge, e.g. S1 E3. -->
+    <string name="detail_episode_code">S%1$d E%2$d</string>
+    <!-- %1$d is a number of minutes. -->
+    <string name="detail_minutes">%1$d min</string>
 
     <string name="search_hint">Rechercher une chaîne, un film ou une série</string>
     <string name="search_clear">Effacer</string>
@@ -40,6 +49,5 @@
 
     <string name="home_loading">Chargement…</string>
     <string name="home_empty">Aucun contenu ici pour l\'instant.</string>
-    <string name="home_error">Impossible de charger le contenu.</string>
     <string name="home_retry">Réessayer</string>
 </resources>

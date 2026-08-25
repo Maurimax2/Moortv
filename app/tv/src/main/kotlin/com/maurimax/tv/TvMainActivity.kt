@@ -21,6 +21,7 @@ import com.maurimax.core.data.AppThemeStore
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.MaurimaxTvTheme
 import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.toMediaItem
 import com.maurimax.feature.auth.LoginScreenTv
 import com.maurimax.feature.auth.LoginViewModel
 import com.maurimax.feature.home.DetailScreenTv
@@ -100,7 +101,10 @@ private fun MaurimaxTvApp(
 
         val chosen = opened
         if (chosen != null) {
-            BackHandler { opened = null }
+            BackHandler {
+                opened = null
+                homeViewModel.closeSeries()
+            }
             DetailScreenTv(
                 item = chosen,
                 onPlay = play,
@@ -110,7 +114,13 @@ private fun MaurimaxTvApp(
                 onDownload = { homeViewModel.download(chosen) },
                 onRemoveDownload = { homeViewModel.removeDownload(chosen) },
                 onRefresh = homeViewModel::refreshLibrary,
-                onBack = { opened = null },
+                seasons = homeState.seasons,
+                episodesLoading = homeState.seasonsLoading,
+                onPlayEpisode = { episode -> play(episode.toMediaItem()) },
+                onBack = {
+                    opened = null
+                    homeViewModel.closeSeries()
+                },
             )
         } else {
             HomeScreenTv(
@@ -121,7 +131,15 @@ private fun MaurimaxTvApp(
                 onSwitchAccount = loginViewModel::signOut,
                 // A channel plays on OK — nobody wants a page about a channel.
                 // Films and series open their own page first.
-                onItemClick = { item -> if (item.isLive) play(item) else opened = item },
+                onItemClick = { item ->
+                    if (item.isLive) {
+                        play(item)
+                    } else {
+                        opened = item
+                        // A series has no episodes until they are asked for.
+                        homeViewModel.openSeries(item)
+                    }
+                },
             )
         }
     } else {

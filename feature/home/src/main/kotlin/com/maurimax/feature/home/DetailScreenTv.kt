@@ -12,8 +12,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,7 +50,10 @@ import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.model.Episode
 import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.MediaKind
+import com.maurimax.core.model.Season
 import kotlinx.coroutines.delay
 
 /**
@@ -66,6 +73,9 @@ fun DetailScreenTv(
     onDownload: () -> Unit = {},
     onRemoveDownload: () -> Unit = {},
     onRefresh: () -> Unit = {},
+    seasons: List<Season> = emptyList(),
+    episodesLoading: Boolean = false,
+    onPlayEpisode: (Episode) -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -112,7 +122,9 @@ fun DetailScreenTv(
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .width(580.dp)
+                // Narrower when the episode list shares the screen: a 960dp
+                // panel has no room for both at full width.
+                .width(if (item.kind == MediaKind.SERIES) 500.dp else 580.dp)
                 .padding(horizontal = Spacing.tvOverscan),
         ) {
             Text(
@@ -186,16 +198,14 @@ fun DetailScreenTv(
                         )
                     }
                 } else {
-                    // A series is a container, not a stream. Saying so beats a
-                    // Play button that does nothing.
-                    Text(
-                        text = stringResource(R.string.detail_episodes_soon),
-                        color = colors.textTertiary,
-                        fontSize = 15.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(Corners.control))
-                            .background(colors.surfaceRaised)
-                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    // A series is a container. The star still means something;
+                    // the episodes below are what plays.
+                    TvAction(
+                        label = if (favourite) "★" else "☆",
+                        onClick = {
+                            favourite = !favourite
+                            onToggleFavourite()
+                        },
                     )
                 }
                 TvAction(
@@ -220,6 +230,91 @@ fun DetailScreenTv(
                             .background(colors.accent),
                     )
                 }
+            }
+        }
+
+        if (item.kind == MediaKind.SERIES) {
+            TvEpisodes(
+                seasons = seasons,
+                loading = episodesLoading,
+                onPlay = onPlayEpisode,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(400.dp)
+                    .padding(horizontal = Spacing.tvOverscan),
+            )
+        }
+    }
+}
+
+/**
+ * The episodes of a series, for a remote.
+ *
+ * Seasons sit in their own rail above the episodes rather than in a drop-down:
+ * a menu that opens over the screen is a second thing to escape from, and on a
+ * D-pad the cheapest control is always the one already on screen.
+ */
+@Composable
+private fun TvEpisodes(
+    seasons: List<Season>,
+    loading: Boolean,
+    onPlay: (Episode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaurimaxTheme.colors
+
+    if (loading || seasons.isEmpty()) {
+        Text(
+            text = stringResource(
+                if (loading) R.string.detail_episodes_loading else R.string.detail_episodes_none,
+            ),
+            color = colors.textTertiary,
+            fontSize = 15.sp,
+            modifier = modifier,
+        )
+        return
+    }
+
+    var selected by remember(seasons) { mutableStateOf(seasons.first().number) }
+    val season = seasons.firstOrNull { it.number == selected } ?: seasons.first()
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(R.string.detail_episodes),
+            color = colors.textPrimary,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
+
+        if (seasons.size > 1) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                items(seasons, key = { it.number }) { entry ->
+                    val active = entry.number == selected
+                    TvAction(
+                        label = stringResource(R.string.detail_season, entry.number),
+                        accent = active,
+                        onClick = { selected = entry.number },
+                    )
+                }
+            }
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            modifier = Modifier.heightIn(max = 260.dp),
+        ) {
+            items(season.episodes, key = { it.id }) { episode ->
+                val code = stringResource(R.string.detail_episode_code, episode.season, episode.number)
+                TvAction(
+                    label = code + "  ·  " + episode.title.ifBlank {
+                        stringResource(R.string.detail_episode, episode.number)
+                    },
+                    onClick = { onPlay(episode) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -252,17 +347,18 @@ private fun TvAction(
         modifier = modifier,
     ) {
         Box(
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.CenterStart,
             modifier = Modifier
-                .height(48.dp)
+                .height(44.dp)
                 .padding(horizontal = Spacing.lg),
         ) {
             Text(
                 text = label,
                 color = if (accent) colors.onAccent else colors.textPrimary,
-                fontSize = 17.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

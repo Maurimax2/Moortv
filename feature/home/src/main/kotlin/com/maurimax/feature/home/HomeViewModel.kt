@@ -17,6 +17,7 @@ import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.MediaKind
+import com.maurimax.core.model.Season
 import com.maurimax.core.model.Credentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,10 @@ data class HomeUiState(
     val favourites: List<MediaItem> = emptyList(),
     /** Titles kept on the device, finished or still arriving. */
     val downloads: List<Download> = emptyList(),
+    /** Episodes of the series currently open, empty when none is. */
+    val seasons: List<Season> = emptyList(),
+    val seasonsLoading: Boolean = false,
+    val seasonsFailure: PortalFailure? = null,
 ) {
 
     /** Downloads that have actually landed and will play right now. */
@@ -119,6 +124,9 @@ class HomeViewModel(
      */
     private var loadJob: Job? = null
 
+    /** The in-flight episode fetch, cancelled when another series is opened. */
+    private var episodesJob: Job? = null
+
     init {
         refreshLibrary()
         load(CatalogTab.LIVE)
@@ -188,6 +196,44 @@ class HomeViewModel(
     fun clearQuery() = _uiState.update { it.copy(query = "") }
 
     fun retry() = load(_uiState.value.tab)
+
+    // ---- episodes ---------------------------------------------------------
+
+    /**
+     * Loads the episodes of a series.
+     *
+     * Only on open, never in bulk: the panel serves no episodes with the series
+     * list, so this is one request per series and asking for all of them up
+     * front would be hundreds of requests for a screen showing twenty posters.
+     */
+    fun openSeries(item: MediaItem) {
+        episodesJob?.cancel()
+        if (item.kind != MediaKind.SERIES) {
+            _uiState.update { it.copy(seasons = emptyList(), seasonsLoading = false, seasonsFailure = null) }
+            return
+        }
+
+        episodesJob = viewModelScope.launch {
+            _uiState.update { it.copy(seasons = emptyList(), seasonsLoading = true, seasonsFailure = null) }
+
+            runCatching { repository.seasons(item) }
+                .onSuccess { seasons ->
+                    _uiState.update { it.copy(seasons = seasons, seasonsLoading = false) }
+                }
+                .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    _uiState.update {
+                        it.copy(seasonsLoading = false, seasonsFailure = error.toPortalFailure())
+                    }
+                }
+        }
+    }
+
+    /** Leaves the series page, so a stale episode list cannot flash on the next one. */
+    fun closeSeries() {
+        episodesJob?.cancel()
+        _uiState.update { it.copy(seasons = emptyList(), seasonsLoading = false, seasonsFailure = null) }
+    }
 
     private fun load(tab: CatalogTab) {
         loadJob?.cancel()

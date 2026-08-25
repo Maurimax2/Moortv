@@ -17,13 +17,7 @@
     <string name="accounts_add">Ajouter un abonnement</string>
     <string name="accounts_remove">Supprimer</string>
     <string name="accounts_cancel">Retour</string>
-    <string name="accounts_switch">Changer de compte</string>
-    <string name="accounts_sign_out">Se déconnecter</string>
-    <string name="accounts_new_title">Nouvel abonnement</string>
     <!-- %1$s is the account username. -->
     <string name="accounts_remove_confirm">Supprimer %1$s de cet appareil ? Sa reprise de lecture et ses favoris seront effacés.</string>
 
-    <string name="auth_error_credentials">Nom d\'utilisateur ou mot de passe incorrect. Vérifiez-les et réessayez.</string>
-    <string name="auth_error_inactive">Ce compte est inactif (%1$s). Contactez le support pour renouveler votre abonnement.</string>
-    <string name="auth_error_unreachable">Impossible de joindre MAURIMAX. Vérifiez votre connexion et réessayez.</string>
 </resources>

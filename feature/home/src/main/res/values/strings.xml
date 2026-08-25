@@ -13,12 +13,21 @@
     <string name="action_favourite_add">أضف إلى المفضلة</string>
     <string name="action_favourite_remove">إزالة من المفضلة</string>
 
-    <string name="detail_episodes_soon">الحلقات ستتوفر قريباً في التحديث القادم.</string>
 
     <string name="action_play">تشغيل</string>
     <string name="action_resume">متابعة</string>
     <string name="action_back">رجوع</string>
     <string name="detail_episodes">الحلقات</string>
+    <string name="detail_episodes_loading">جارٍ تحميل الحلقات…</string>
+    <string name="detail_episodes_none">لا توجد حلقات لهذا المسلسل على الخادم.</string>
+    <!-- %1$d is the season number. -->
+    <string name="detail_season">الموسم %1$d</string>
+    <!-- %1$d is the episode number. -->
+    <string name="detail_episode">الحلقة %1$d</string>
+    <!-- %1$d season, %2$d episode. Shown as a short badge, e.g. م1 ح3. -->
+    <string name="detail_episode_code">م%1$d ح%2$d</string>
+    <!-- %1$d is a number of minutes. -->
+    <string name="detail_minutes">%1$d د</string>
 
     <string name="search_hint">ابحث عن قناة أو فيلم أو مسلسل</string>
     <string name="search_clear">مسح</string>
@@ -40,6 +49,5 @@
 
     <string name="home_loading">جارٍ التحميل…</string>
     <string name="home_empty">لا يوجد محتوى هنا بعد.</string>
-    <string name="home_error">تعذّر تحميل المحتوى.</string>
     <string name="home_retry">إعادة المحاولة</string>
 </resources>

@@ -68,3 +68,38 @@ data class ContentRow(
     val title: String,
     val items: List<MediaItem>,
 )
+
+/** One episode of a series. Unlike the series itself, this actually plays. */
+data class Episode(
+    val id: String,
+    val title: String,
+    val season: Int,
+    val number: Int,
+    val plot: String = "",
+    val artworkUrl: String = "",
+    val durationMinutes: Int = 0,
+    val playbackUrl: String = "",
+)
+
+/** A season and its episodes, in the order they should be watched. */
+data class Season(
+    val number: Int,
+    val episodes: List<Episode>,
+)
+
+/**
+ * An episode as the rest of the app sees it.
+ *
+ * Everything downstream — the player, continue-watching, downloads — is built
+ * around [MediaItem], and an episode is a playable title like any other. Making
+ * it one here means none of that needed a second code path.
+ */
+fun Episode.toMediaItem() = MediaItem(
+    id = id,
+    title = title.ifBlank { "S${season}E$number" },
+    kind = MediaKind.SERIES,
+    artworkUrl = artworkUrl,
+    description = plot,
+    durationMinutes = durationMinutes,
+    playbackUrl = playbackUrl,
+)

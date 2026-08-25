@@ -22,14 +22,7 @@
     <string name="accounts_add">إضافة اشتراك</string>
     <string name="accounts_remove">حذف</string>
     <string name="accounts_cancel">رجوع</string>
-    <string name="accounts_switch">تبديل الحساب</string>
-    <string name="accounts_sign_out">تسجيل الخروج</string>
-    <string name="accounts_new_title">اشتراك جديد</string>
     <!-- %1$s is the account username. -->
     <string name="accounts_remove_confirm">حذف %1$s من هذا الجهاز؟ ستُحذف قائمة المتابعة والمفضلة الخاصة به.</string>
 
-    <string name="auth_error_credentials">اسم المستخدم أو كلمة المرور غير صحيحة. تحقّق منهما وحاول مرة أخرى.</string>
-    <!-- %1$s is the account state the portal reports, e.g. Expired. -->
-    <string name="auth_error_inactive">هذا الحساب غير نشط (%1$s). يرجى التواصل مع الدعم لتجديد اشتراكك.</string>
-    <string name="auth_error_unreachable">تعذّر الوصول إلى MAURIMAX. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.</string>
 </resources>
