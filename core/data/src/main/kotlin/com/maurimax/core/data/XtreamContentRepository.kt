@@ -22,6 +22,9 @@ import com.maurimax.core.network.dto.VodStreamDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
 /**
@@ -40,120 +43,76 @@ class XtreamContentRepository(
     private val maxItemsPerRow: Int = 20,
 ) : ContentRepository {
 
-    override suspend fun rows(tab: CatalogTab): List<ContentRow> = withContext(Dispatchers.IO) {
-        when (tab) {
-            CatalogTab.LIVE -> sections(
-                categories = { liveCategories() },
-                items = { liveChannels() },
-                categoryOf = LiveChannel::categoryId,
-                toMediaItem = { it.toItem() },
-            )
-
-            CatalogTab.SPORTS -> sportsSections()
-
-            CatalogTab.MOVIES -> sections(
-                categories = { movieCategories() },
-                items = { movies() },
-                categoryOf = Movie::categoryId,
-                toMediaItem = { it.toItem() },
-            )
-
-            CatalogTab.SERIES -> sections(
-                categories = { seriesCategories() },
-                items = { series() },
-                categoryOf = Series::categoryId,
-                toMediaItem = { it.toItem() },
-            )
-        }
+    private companion object {
+        /**
+         * How many category requests are in flight at once. Enough to fill the
+         * screen quickly, few enough that a phone on a weak connection is not
+         * fighting itself for bandwidth.
+         */
+        const val CONCURRENT_CATEGORIES = 4
     }
 
     /**
-     * The football section.
+     * One rail at a time.
      *
-     * Filtered before the row cap rather than after it, because on a panel with
-     * two hundred categories the sports ones are rarely in the first twelve —
-     * filtering afterwards would leave the section empty on exactly the panels
-     * that need it most.
+     * The panel is asked for its categories — a small list — and then for the
+     * channels of each category on its own. It is never asked for the whole
+     * catalogue: `get_live_streams` without a category returns every stream on
+     * the server, which here is tens of megabytes and tens of thousands of
+     * objects to parse before a single tile can be drawn. That request is what
+     * made the app look dead on a real connection.
+     *
+     * Rails are emitted as they land, so the screen starts filling in about the
+     * time one small request takes rather than after all of them.
      */
-    private suspend fun sportsSections(): List<ContentRow> = coroutineScope {
-        val categoriesJob = async { liveCategories() }
-        val channelsJob = async { liveChannels() }
-
-        val channels = channelsJob.await()
-        val grouped = channels.groupBy(LiveChannel::categoryId)
-
-        val rows = categoriesJob.await()
-            .filter { Sports.isSport(it.name) }
-            .sortedBy { Sports.rank(it.name) }
-            .mapNotNull { category ->
-                val entries = grouped[category.id].orEmpty()
-                if (entries.isEmpty()) {
-                    null
-                } else {
-                    ContentRow(
-                        title = category.name,
-                        items = entries.take(maxItemsPerRow).map { it.toItem() },
-                    )
-                }
-            }
+    override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flow {
+        val wanted = categoriesFor(tab)
+            .let { all -> if (tab == CatalogTab.SPORTS) all.filterSport() else all }
             .take(maxRows)
 
-        if (rows.isNotEmpty()) return@coroutineScope rows
-
-        // Some resellers put every channel in one category. Reading the channel
-        // names instead still finds the football, and an unlabelled row under a
-        // tab called Sport needs no header to explain itself.
-        val byName = channels.filter { Sports.isSport(it.name) }
-        if (byName.isEmpty()) {
-            emptyList()
-        } else {
-            listOf(ContentRow(title = "", items = byName.take(maxItemsPerRow * 3).map { it.toItem() }))
+        if (wanted.isEmpty()) {
+            emit(emptyList())
+            return@flow
         }
-    }
 
-    /**
-     * The episodes of one series.
-     *
-     * Panels disagree about almost everything here — the season key, whether an
-     * episode carries its own number, whether the title already says which
-     * episode it is — so what comes back is put in a fixed order rather than
-     * trusted, and anything without an id is dropped: without one there is no
-     * URL to play.
-     */
-    override suspend fun seasons(item: MediaItem): List<Season> = withContext(Dispatchers.IO) {
-        val seriesId = item.id.removePrefix("series-").toIntOrNull()
-        if (item.kind != MediaKind.SERIES || seriesId == null) return@withContext emptyList()
-
-        val response = api.seriesInfo(credentials.username, credentials.password, seriesId)
-        val fallbackArt = response.info?.cover.orEmpty().ifBlank { item.artworkUrl }
-
-        response.episodes
-            .mapNotNull { (key, entries) ->
-                val number = key.trim().toIntOrNull() ?: entries.firstOrNull()?.season ?: return@mapNotNull null
-                val episodes = entries
-                    .filter { it.id.isNotBlank() }
-                    .mapIndexed { index, dto -> dto.toEpisode(number, index + 1, fallbackArt) }
-                    .sortedBy { it.number }
-                if (episodes.isEmpty()) null else Season(number, episodes)
+        val filled = mutableListOf<ContentRow>()
+        for (batch in wanted.chunked(CONCURRENT_CATEGORIES)) {
+            val loaded = coroutineScope {
+                batch.map { category ->
+                    async {
+                        // One category failing is one missing rail, not an
+                        // empty screen — panels routinely have a category that
+                        // errors while the rest are fine.
+                        category to runCatching { itemsIn(tab, category.id) }.getOrDefault(emptyList())
+                    }
+                }.awaitAll()
             }
-            .sortedBy { it.number }
+
+            loaded.forEach { (category, items) ->
+                if (items.isNotEmpty()) {
+                    filled += ContentRow(category.name, items.take(maxItemsPerRow))
+                }
+            }
+            emit(filled.toList())
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /** Majors first: somebody opening the football is looking for tonight. */
+    private fun List<Category>.filterSport() =
+        filter { Sports.isSport(it.name) }.sortedBy { Sports.rank(it.name) }
+
+    private suspend fun categoriesFor(tab: CatalogTab): List<Category> = when (tab) {
+        // Sport is a view of the live catalogue, not a section the panel has.
+        CatalogTab.LIVE, CatalogTab.SPORTS -> liveCategories()
+        CatalogTab.MOVIES -> movieCategories()
+        CatalogTab.SERIES -> seriesCategories()
     }
 
-    private fun EpisodeDto.toEpisode(seasonNumber: Int, position: Int, fallbackArt: String) = Episode(
-        id = "episode-$id",
-        // Some panels title an episode with its own name, some repeat the
-        // series name, and some send nothing at all. A blank one is filled in
-        // by the screen, which knows what season it is drawing.
-        title = title.trim(),
-        season = if (season > 0) season else seasonNumber,
-        number = if (episodeNum > 0) episodeNum else position,
-        plot = info?.plot.orEmpty(),
-        artworkUrl = info?.image.orEmpty().ifBlank { fallbackArt },
-        durationMinutes = (info?.durationSeconds ?: 0) / 60,
-        playbackUrl = id.toIntOrNull()?.let {
-            urls.episode(credentials.username, credentials.password, it, containerExtension)
-        }.orEmpty(),
-    )
+    private suspend fun itemsIn(tab: CatalogTab, categoryId: String): List<MediaItem> = when (tab) {
+        CatalogTab.LIVE, CatalogTab.SPORTS -> liveChannels(categoryId).map { it.toItem() }
+        CatalogTab.MOVIES -> movies(categoryId).map { it.toItem() }
+        CatalogTab.SERIES -> series(categoryId).map { it.toItem() }
+    }
 
     suspend fun liveCategories(): List<Category> =
         api.liveCategories(credentials.username, credentials.password).map(CategoryDto::toModel)
@@ -213,38 +172,6 @@ class XtreamContentRepository(
         description = plot,
     )
 
-    /**
-     * Categories and items arrive as two flat lists, so rows are assembled here
-     * rather than with a request per category. Both fetches run concurrently:
-     * on a large panel the item list is the slow one.
-     */
-    private suspend fun <T> sections(
-        categories: suspend () -> List<Category>,
-        items: suspend () -> List<T>,
-        categoryOf: (T) -> String,
-        toMediaItem: (T) -> MediaItem,
-    ): List<ContentRow> = coroutineScope {
-        val categoriesJob = async { categories() }
-        val itemsJob = async { items() }
-
-        val grouped = itemsJob.await().groupBy(categoryOf)
-
-        categoriesJob.await()
-            .asSequence()
-            .mapNotNull { category ->
-                val entries = grouped[category.id].orEmpty()
-                if (entries.isEmpty()) {
-                    null
-                } else {
-                    ContentRow(
-                        title = category.name,
-                        items = entries.take(maxItemsPerRow).map(toMediaItem),
-                    )
-                }
-            }
-            .take(maxRows)
-            .toList()
-    }
 }
 
 internal fun CategoryDto.toModel() = Category(id = id, name = name)

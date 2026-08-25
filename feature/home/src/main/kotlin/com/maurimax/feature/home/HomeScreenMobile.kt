@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
@@ -364,7 +365,9 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
             }
         }
 
-        items(state.visibleRows, key = { it.title }) { row ->
+        // Keyed by position as well as name: a panel is free to hand back two
+        // categories with the same title, and a duplicate key crashes the list.
+        itemsIndexed(state.visibleRows, key = { index, row -> "$index-${row.title}" }) { _, row ->
             MobileRow(row = row, tab = state.tab, onItemClick = onItemClick)
         }
     }

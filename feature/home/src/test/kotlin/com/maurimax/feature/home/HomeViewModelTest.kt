@@ -4,15 +4,21 @@ import com.maurimax.core.data.ContentRepository
 import com.maurimax.core.data.FakeContentRepository
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
+import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.MediaKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -29,6 +35,15 @@ class HomeViewModelTest {
 
     @After
     fun tearDown() = Dispatchers.resetMain()
+
+    /** Builds a repository from a lambda, so each test states only what it needs. */
+    private fun repositoryOf(rows: (CatalogTab) -> Flow<List<ContentRow>>) =
+        object : ContentRepository {
+            override fun rows(tab: CatalogTab) = rows(tab)
+        }
+
+    private fun row(title: String) =
+        ContentRow(title, listOf(MediaItem(id = title, title = title, kind = MediaKind.LIVE)))
 
     @Test
     fun `starts on live tv in a loading state`() = runTest(dispatcher) {
@@ -50,6 +65,50 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `rails show as they arrive rather than only when the tab is finished`() =
+        runTest(dispatcher) {
+            // The reported symptom: a spinner and nothing else. The panel is
+            // asked one category at a time now, so the first rail must reach
+            // the screen without waiting for the last.
+            val trickle = repositoryOf {
+                flow {
+                    emit(listOf(row("First")))
+                    delay(10_000)
+                    emit(listOf(row("First"), row("Second")))
+                }
+            }
+
+            val viewModel = HomeViewModel(trickle)
+            testScheduler.advanceTimeBy(1)
+            testScheduler.runCurrent()
+
+            val early = viewModel.uiState.value
+            assertFalse("the screen must not still be loading", early.loading)
+            assertEquals(listOf("First"), early.rows.map { it.title })
+
+            testScheduler.advanceUntilIdle()
+            assertEquals(listOf("First", "Second"), viewModel.uiState.value.rows.map { it.title })
+        }
+
+    @Test
+    fun `content already on screen survives a failure partway through`() = runTest(dispatcher) {
+        val diesHalfway = repositoryOf {
+            flow {
+                emit(listOf(row("First")))
+                error("portal went away")
+            }
+        }
+
+        val viewModel = HomeViewModel(diesHalfway)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        // An error page that throws away working rails is worse than stale rails.
+        assertEquals(listOf("First"), state.rows.map { it.title })
+        assertNull(state.failure)
+    }
+
+    @Test
     fun `switching tab loads that tab's catalogue`() = runTest(dispatcher) {
         val viewModel = HomeViewModel(FakeContentRepository())
         testScheduler.advanceUntilIdle()
@@ -64,11 +123,9 @@ class HomeViewModelTest {
     @Test
     fun `a revisited tab is served from cache without refetching`() = runTest(dispatcher) {
         var calls = 0
-        val counting = object : ContentRepository {
-            override suspend fun rows(tab: CatalogTab): List<ContentRow> {
-                calls++
-                return FakeContentRepository().rows(tab)
-            }
+        val counting = repositoryOf { tab ->
+            calls++
+            FakeContentRepository().rows(tab)
         }
 
         val viewModel = HomeViewModel(counting)
@@ -85,11 +142,9 @@ class HomeViewModelTest {
     @Test
     fun `a failing repository surfaces an error and can be retried`() = runTest(dispatcher) {
         var fail = true
-        val flaky = object : ContentRepository {
-            override suspend fun rows(tab: CatalogTab): List<ContentRow> {
-                if (fail) error("portal unreachable")
-                return FakeContentRepository().rows(tab)
-            }
+        val flaky = repositoryOf { tab ->
+            if (fail) flow<List<ContentRow>> { error("portal unreachable") }
+            else FakeContentRepository().rows(tab)
         }
 
         val viewModel = HomeViewModel(flaky)
@@ -106,11 +161,7 @@ class HomeViewModelTest {
 
     @Test
     fun `an empty catalogue is distinguishable from a failure`() = runTest(dispatcher) {
-        val empty = object : ContentRepository {
-            override suspend fun rows(tab: CatalogTab) = emptyList<ContentRow>()
-        }
-
-        val viewModel = HomeViewModel(empty)
+        val viewModel = HomeViewModel(repositoryOf { flow { emit(emptyList()) } })
         testScheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isEmpty)
@@ -122,10 +173,10 @@ class HomeViewModelTest {
         runTest(dispatcher) {
             // The reported symptom: switching tabs showed the wrong catalogue,
             // because a slow request finished after the tab had already changed.
-            val slowLive = object : ContentRepository {
-                override suspend fun rows(tab: CatalogTab): List<ContentRow> {
+            val slowLive = repositoryOf { tab ->
+                flow {
                     if (tab == CatalogTab.LIVE) delay(5_000)
-                    return FakeContentRepository().rows(tab)
+                    emitAll(FakeContentRepository().rows(tab))
                 }
             }
 

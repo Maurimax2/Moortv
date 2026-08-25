@@ -1,6 +1,8 @@
 package com.maurimax.core.data
 
 import android.content.Context
+import com.maurimax.core.model.CatalogTab
+import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.Credentials
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.network.XtreamApi
@@ -54,6 +56,16 @@ object Graph {
         if (!ready) return
         credentialStore.forget(username)
         Library.erase(appContext, username)
+        CatalogCache.erase(appContext, username)
+    }
+
+    // ---- catalogue cache --------------------------------------------------
+
+    fun cachedRows(tab: CatalogTab): List<ContentRow> =
+        if (ready) CatalogCache.load(appContext, activeUser, tab) else emptyList()
+
+    fun cacheRows(tab: CatalogTab, rows: List<ContentRow>) {
+        if (ready) CatalogCache.save(appContext, activeUser, tab, rows)
     }
 
     // ---- library ----------------------------------------------------------

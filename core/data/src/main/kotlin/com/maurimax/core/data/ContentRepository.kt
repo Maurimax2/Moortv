@@ -4,15 +4,20 @@ import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.Season
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The single seam between the UI and the portal.
  *
- * One call per tab: a panel returns its whole catalog for a section in two
- * requests, so paging per row would be slower, not faster.
+ * Rails arrive one at a time rather than all at once. A panel this size cannot
+ * hand over its whole catalogue in a request anybody is willing to wait for, so
+ * the screen fills as each category lands instead of staying empty until the
+ * last one does.
  */
 interface ContentRepository {
-    suspend fun rows(tab: CatalogTab): List<ContentRow>
+
+    /** Emits a growing list of rails. The last emission is the finished tab. */
+    fun rows(tab: CatalogTab): Flow<List<ContentRow>>
 
     /**
      * The episodes of one series, in order.

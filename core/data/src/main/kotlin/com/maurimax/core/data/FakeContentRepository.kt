@@ -4,6 +4,8 @@ import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.MediaKind
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * In-memory catalog for previews and tests. Deliberately the only place fake
@@ -11,12 +13,14 @@ import com.maurimax.core.model.MediaKind
  */
 class FakeContentRepository : ContentRepository {
 
-    override suspend fun rows(tab: CatalogTab): List<ContentRow> = when (tab) {
-        CatalogTab.LIVE -> live
-        CatalogTab.SPORTS -> live
-        CatalogTab.MOVIES -> movies
-        CatalogTab.SERIES -> series
-    }
+    override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flowOf(
+        when (tab) {
+            CatalogTab.LIVE -> live
+            CatalogTab.SPORTS -> live
+            CatalogTab.MOVIES -> movies
+            CatalogTab.SERIES -> series
+        },
+    )
 
     private companion object {
         fun item(id: String, title: String, kind: MediaKind, rating: String = "") =

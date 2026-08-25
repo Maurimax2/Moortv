@@ -30,6 +30,8 @@ data class HomeUiState(
     val tab: CatalogTab = CatalogTab.LIVE,
     val rows: List<ContentRow> = emptyList(),
     val loading: Boolean = true,
+    /** Showing what was cached while the panel is asked for something newer. */
+    val refreshing: Boolean = false,
     val failure: PortalFailure? = null,
     val query: String = "",
     /** Titles started and not finished, most recent first. Empty when none. */
@@ -137,10 +139,13 @@ class HomeViewModel(
 
         val cached = cache[tab]
         if (cached != null) {
+            // Already fetched this session: instant, and no request at all.
+            loadJob?.cancel()
             _uiState.value = _uiState.value.copy(
                 tab = tab,
                 rows = cached,
                 loading = false,
+                refreshing = false,
                 failure = null,
                 query = "",
             )
@@ -247,34 +252,57 @@ class HomeViewModel(
         _uiState.update { it.copy(seasons = emptyList(), seasonsLoading = false, seasonsFailure = null) }
     }
 
+    /**
+     * Fills a tab.
+     *
+     * Three things happen in order, and the customer sees the first one
+     * immediately: whatever this account saw last time is drawn from disk, then
+     * each rail replaces it as the panel answers, then the finished tab is
+     * written back for next launch. A returning customer never waits on a blank
+     * screen, and a slow panel costs freshness rather than usefulness.
+     */
     private fun load(tab: CatalogTab) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
+            val remembered = cache[tab] ?: Graph.cachedRows(tab)
+
             _uiState.value = _uiState.value.copy(
                 tab = tab,
-                rows = emptyList(),
-                loading = true,
+                rows = remembered,
+                loading = remembered.isEmpty(),
+                refreshing = remembered.isNotEmpty(),
                 failure = null,
                 query = "",
             )
 
-            runCatching { repository.rows(tab) }
-                .onSuccess { rows ->
-                    // Cancellation is not instant, so a late response still has to
-                    // prove it belongs to the tab on screen before it is shown.
-                    if (_uiState.value.tab != tab) return@onSuccess
+            try {
+                repository.rows(tab).collect { rows ->
+                    // Cancellation is not instant, so a late emission still has
+                    // to prove it belongs to the tab on screen.
+                    if (_uiState.value.tab != tab) return@collect
                     cache[tab] = rows
                     // Posters from any tab will do; the sign-in wall just needs art.
                     Graph.rememberPosters(rows.flatMap { it.items }.map { it.artworkUrl })
                     _uiState.update { it.copy(rows = rows, loading = false, failure = null) }
                 }
-                .onFailure { error ->
-                    if (error is kotlinx.coroutines.CancellationException) throw error
-                    if (_uiState.value.tab != tab) return@onFailure
-                    _uiState.update {
-                        it.copy(loading = false, failure = error.toPortalFailure())
-                    }
+                if (_uiState.value.tab == tab) {
+                    _uiState.update { it.copy(refreshing = false) }
+                    Graph.cacheRows(tab, _uiState.value.rows)
                 }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                if (_uiState.value.tab != tab) return@launch
+                _uiState.update {
+                    // Stale rails beat an error page: the customer can still
+                    // open what they were watching yesterday.
+                    it.copy(
+                        loading = false,
+                        refreshing = false,
+                        failure = error.toPortalFailure().takeIf { _ -> it.rows.isEmpty() },
+                    )
+                }
+            }
         }
     }
 
