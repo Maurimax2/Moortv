@@ -8,6 +8,7 @@
     <string name="detail_episodes_soon">Les épisodes arrivent dans une prochaine mise à jour.</string>
 
     <string name="action_play">Lecture</string>
+    <string name="action_resume">Reprendre</string>
     <string name="action_back">Retour</string>
     <string name="detail_episodes">Épisodes</string>
 

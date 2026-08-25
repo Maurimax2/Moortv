@@ -3,20 +3,27 @@ package com.maurimax.tv
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.maurimax.core.data.AppLocale
 import com.maurimax.core.data.AppThemeStore
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.MaurimaxTvTheme
+import com.maurimax.core.model.MediaItem
 import com.maurimax.feature.auth.LoginScreenTv
 import com.maurimax.feature.auth.LoginViewModel
+import com.maurimax.feature.home.DetailScreenTv
 import com.maurimax.feature.home.HomeScreenTv
 import com.maurimax.feature.home.HomeViewModel
 import com.maurimax.feature.player.PlayerActivity
@@ -32,8 +39,9 @@ class TvMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Light is the default; the choice is remembered and applied
-            // without recreating the activity.
+            // Dark is the default — channel logos arrive baked on black, so a
+            // light page frames every one of them in a grey box. The choice is
+            // remembered and applied without recreating the activity.
             var mode by remember { mutableStateOf(AppThemeStore.load(this)) }
 
             MaurimaxTvTheme(dark = mode == ThemeMode.DARK) {
@@ -61,20 +69,49 @@ private fun MaurimaxTvApp(
 
     val credentials = login.credentials
     if (login.signedIn && credentials != null) {
-        HomeScreenTv(
-            viewModel = viewModel(
-                key = "home-${credentials.username}",
-                factory = HomeViewModel.factory(credentials),
-            ),
-            onItemClick = { item ->
-                // A series is a container, not a stream; its episode list comes next.
-                if (item.isPlayable) {
-                    activity.startActivity(
-                        PlayerActivity.intent(activity, item),
-                    )
-                }
-            },
+        var opened by remember { mutableStateOf<MediaItem?>(null) }
+
+        val homeViewModel: HomeViewModel = viewModel(
+            key = "home-${credentials.username}",
+            factory = HomeViewModel.factory(credentials),
         )
+
+        // Playback runs in another activity, so progress lands while this one
+        // is stopped. Without re-reading on resume, the continue-watching row
+        // would still show what the customer just finished.
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) homeViewModel.refreshLibrary()
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+
+        val play: (MediaItem) -> Unit = { item ->
+            if (item.isPlayable) {
+                activity.startActivity(PlayerActivity.intent(activity, item))
+            }
+        }
+
+        val chosen = opened
+        if (chosen != null) {
+            BackHandler { opened = null }
+            DetailScreenTv(
+                item = chosen,
+                onPlay = play,
+                isFavourite = homeViewModel.isFavourite(chosen),
+                onToggleFavourite = { homeViewModel.toggleFavourite(chosen) },
+                onBack = { opened = null },
+            )
+        } else {
+            HomeScreenTv(
+                viewModel = homeViewModel,
+                // A channel plays on OK — nobody wants a page about a channel.
+                // Films and series open their own page first.
+                onItemClick = { item -> if (item.isLive) play(item) else opened = item },
+            )
+        }
     } else {
         LoginScreenTv(
             viewModel = loginViewModel,

@@ -43,8 +43,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Light is the default; the choice is remembered and applied
-            // without recreating the activity.
+            // Dark is the default — channel logos arrive baked on black, so a
+            // light page frames every one of them in a grey box. The choice is
+            // remembered and applied without recreating the activity.
             var mode by remember { mutableStateOf(AppThemeStore.load(this)) }
 
             // System bar icons invert with the theme; white glyphs on a light
