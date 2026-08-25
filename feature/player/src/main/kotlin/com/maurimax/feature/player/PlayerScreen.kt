@@ -48,6 +48,8 @@ fun PlayerScreen(
     url: String,
     title: String,
     isLive: Boolean,
+    startPositionMs: Long = 0L,
+    onProgress: (positionMs: Long, durationMs: Long) -> Unit = { _, _ -> },
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -59,8 +61,9 @@ fun PlayerScreen(
     val player = remember(attempt) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
-            // Live streams have no meaningful end, so repeat is off and the
-            // player seeks to the live edge on start.
+            // Picks up where the customer left off. Skipped for live, which has
+            // no meaningful position to return to.
+            if (!isLive && startPositionMs > 0) seekTo(startPositionMs)
             playWhenReady = true
             prepare()
         }
@@ -80,6 +83,11 @@ fun PlayerScreen(
         }
         player.addListener(listener)
         onDispose {
+            // Read the position before releasing, or it is gone.
+            val position = player.currentPosition
+            val duration = player.duration.takeIf { it > 0 } ?: 0L
+            if (position > 0) onProgress(position, duration)
+
             player.removeListener(listener)
             player.release()
         }

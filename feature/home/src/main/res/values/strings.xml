@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="row_continue_watching">متابعة المشاهدة</string>
+    <string name="row_favourites">المفضلة</string>
+    <string name="action_favourite_add">أضف إلى المفضلة</string>
+    <string name="action_favourite_remove">إزالة من المفضلة</string>
+
+    <string name="detail_episodes_soon">الحلقات ستتوفر قريباً في التحديث القادم.</string>
+
+    <string name="action_play">تشغيل</string>
+    <string name="action_back">رجوع</string>
+    <string name="detail_episodes">الحلقات</string>
+
     <string name="search_hint">ابحث عن قناة أو فيلم أو مسلسل</string>
     <string name="search_clear">مسح</string>
     <string name="search_no_results">لا توجد نتائج لـ \"%1$s\"</string>

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="row_continue_watching">Reprendre</string>
+    <string name="row_favourites">Favoris</string>
+    <string name="action_favourite_add">Ajouter aux favoris</string>
+    <string name="action_favourite_remove">Retirer des favoris</string>
+
+    <string name="detail_episodes_soon">Les épisodes arrivent dans une prochaine mise à jour.</string>
+
+    <string name="action_play">Lecture</string>
+    <string name="action_back">Retour</string>
+    <string name="detail_episodes">Épisodes</string>
+
     <string name="search_hint">Rechercher une chaîne, un film ou une série</string>
     <string name="search_clear">Effacer</string>
     <string name="search_no_results">Aucun résultat pour \"%1$s\"</string>

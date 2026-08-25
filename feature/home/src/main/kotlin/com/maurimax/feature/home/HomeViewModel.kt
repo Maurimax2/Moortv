@@ -7,10 +7,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.ContentRepository
 import com.maurimax.core.data.Graph
+import com.maurimax.core.data.SavedItem
+import com.maurimax.core.data.toSavedItem
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.toPortalFailure
 import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.ContentRow
+import com.maurimax.core.model.MediaItem
+import com.maurimax.core.model.MediaKind
 import com.maurimax.core.model.Credentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +29,10 @@ data class HomeUiState(
     val loading: Boolean = true,
     val failure: PortalFailure? = null,
     val query: String = "",
+    /** Titles started and not finished, most recent first. Empty when none. */
+    val resume: List<MediaItem> = emptyList(),
+    /** Titles the customer starred. */
+    val favourites: List<MediaItem> = emptyList(),
 ) {
 
     /**
@@ -44,6 +52,21 @@ data class HomeUiState(
                 if (hits.isEmpty()) null else row.copy(items = hits)
             }
         }
+
+    /**
+     * Personal rows only make sense for the tab they belong to: a film the
+     * customer paused should not appear while they are browsing live channels.
+     */
+    fun personalFor(tab: CatalogTab): Pair<List<MediaItem>, List<MediaItem>> {
+        fun matches(item: MediaItem) = when (tab) {
+            CatalogTab.LIVE -> item.isLive
+            CatalogTab.MOVIES -> item.kind == MediaKind.MOVIE
+            CatalogTab.SERIES -> item.kind == MediaKind.SERIES
+        }
+        // Resume is meaningless for a live channel, so it is films and series only.
+        val resumable = if (tab == CatalogTab.LIVE) emptyList() else resume.filter(::matches)
+        return resumable to favourites.filter(::matches)
+    }
 
     val noResults: Boolean get() = query.isNotBlank() && visibleRows.isEmpty() && !loading
     val isEmpty: Boolean get() = !loading && failure == null && rows.isEmpty()
@@ -75,6 +98,7 @@ class HomeViewModel(
     private var loadJob: Job? = null
 
     init {
+        refreshLibrary()
         load(CatalogTab.LIVE)
     }
 
@@ -83,10 +107,45 @@ class HomeViewModel(
 
         val cached = cache[tab]
         if (cached != null) {
-            _uiState.value = HomeUiState(tab = tab, rows = cached, loading = false)
+            _uiState.value = _uiState.value.copy(
+                tab = tab,
+                rows = cached,
+                loading = false,
+                failure = null,
+                query = "",
+            )
         } else {
             load(tab)
         }
+    }
+
+    /**
+     * Re-reads the on-device lists.
+     *
+     * Called when the screen resumes, because playback happens in another
+     * activity: without this, coming back from watching something would show a
+     * stale continue-watching row that does not include what was just watched.
+     */
+    fun refreshLibrary() {
+        _uiState.update {
+            it.copy(
+                resume = Graph.continueWatching().map(SavedItem::toMediaItem),
+                favourites = Graph.favourites().map(SavedItem::toMediaItem),
+            )
+        }
+    }
+
+    fun toggleFavourite(item: MediaItem): Boolean {
+        val nowFavourite = Graph.toggleFavourite(item.toSavedItem())
+        refreshLibrary()
+        return nowFavourite
+    }
+
+    fun isFavourite(item: MediaItem): Boolean = Graph.isFavourite(item.id)
+
+    fun removeFromResume(item: MediaItem) {
+        Graph.forgetProgress(item.id)
+        refreshLibrary()
     }
 
     fun onQueryChange(value: String) = _uiState.update { it.copy(query = value) }
@@ -98,7 +157,13 @@ class HomeViewModel(
     private fun load(tab: CatalogTab) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _uiState.value = HomeUiState(tab = tab, loading = true)
+            _uiState.value = _uiState.value.copy(
+                tab = tab,
+                rows = emptyList(),
+                loading = true,
+                failure = null,
+                query = "",
+            )
 
             runCatching { repository.rows(tab) }
                 .onSuccess { rows ->
@@ -106,6 +171,8 @@ class HomeViewModel(
                     // prove it belongs to the tab on screen before it is shown.
                     if (_uiState.value.tab != tab) return@onSuccess
                     cache[tab] = rows
+                    // Posters from any tab will do; the sign-in wall just needs art.
+                    Graph.rememberPosters(rows.flatMap { it.items }.map { it.artworkUrl })
                     _uiState.update { it.copy(rows = rows, loading = false, failure = null) }
                 }
                 .onFailure { error ->

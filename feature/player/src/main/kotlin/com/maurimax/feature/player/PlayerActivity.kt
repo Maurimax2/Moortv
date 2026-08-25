@@ -10,6 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.maurimax.core.data.Library
+import com.maurimax.core.data.SavedItem
+import com.maurimax.core.model.MediaItem
 
 /**
  * Full-screen playback.
@@ -25,6 +28,16 @@ class PlayerActivity : ComponentActivity() {
         val url = intent.getStringExtra(EXTRA_URL).orEmpty()
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val isLive = intent.getBooleanExtra(EXTRA_LIVE, false)
+        val itemId = intent.getStringExtra(EXTRA_ID).orEmpty()
+        val artwork = intent.getStringExtra(EXTRA_ARTWORK).orEmpty()
+        val kind = intent.getStringExtra(EXTRA_KIND).orEmpty()
+
+        // Where this customer got to last time. Live has no meaningful position.
+        val startAt = if (isLive || itemId.isBlank()) {
+            0L
+        } else {
+            Library.resumePosition(this, itemId)
+        }
 
         // A phone plays video landscape; a TV is already landscape and must not
         // be told otherwise.
@@ -47,6 +60,26 @@ class PlayerActivity : ComponentActivity() {
                 url = url,
                 title = title,
                 isLive = isLive,
+                startPositionMs = startAt,
+                onProgress = { position, duration ->
+                    // Written as playback stops rather than continuously: a
+                    // preference write per second would be wasteful and adds
+                    // nothing, since only the last position matters.
+                    if (!isLive && itemId.isNotBlank()) {
+                        Library.recordProgress(
+                            context = this,
+                            item = SavedItem(
+                                id = itemId,
+                                title = title,
+                                kind = kind.ifBlank { "MOVIE" },
+                                artworkUrl = artwork,
+                                playbackUrl = url,
+                                positionMs = position,
+                                durationMs = duration,
+                            ),
+                        )
+                    }
+                },
                 onBack = { finish() },
             )
         }
@@ -56,12 +89,18 @@ class PlayerActivity : ComponentActivity() {
         private const val EXTRA_URL = "url"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_LIVE = "live"
+        private const val EXTRA_ID = "id"
+        private const val EXTRA_ARTWORK = "artwork"
+        private const val EXTRA_KIND = "kind"
 
         /** The only way in, so callers cannot get the extras wrong. */
-        fun intent(context: Context, url: String, title: String, isLive: Boolean): Intent =
+        fun intent(context: Context, item: MediaItem): Intent =
             Intent(context, PlayerActivity::class.java)
-                .putExtra(EXTRA_URL, url)
-                .putExtra(EXTRA_TITLE, title)
-                .putExtra(EXTRA_LIVE, isLive)
+                .putExtra(EXTRA_URL, item.playbackUrl)
+                .putExtra(EXTRA_TITLE, item.title)
+                .putExtra(EXTRA_LIVE, item.isLive)
+                .putExtra(EXTRA_ID, item.id)
+                .putExtra(EXTRA_ARTWORK, item.artworkUrl)
+                .putExtra(EXTRA_KIND, item.kind.name)
     }
 }

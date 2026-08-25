@@ -70,12 +70,7 @@ private fun MaurimaxTvApp(
                 // A series is a container, not a stream; its episode list comes next.
                 if (item.isPlayable) {
                     activity.startActivity(
-                        PlayerActivity.intent(
-                            context = activity,
-                            url = item.playbackUrl,
-                            title = item.title,
-                            isLive = item.isLive,
-                        ),
+                        PlayerActivity.intent(activity, item),
                     )
                 }
             },

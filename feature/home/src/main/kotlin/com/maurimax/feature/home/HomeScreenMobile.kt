@@ -258,10 +258,52 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         contentPadding = PaddingValues(
-            top = Spacing.md,
+            top = Spacing.sm,
             bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
+        // Only when nothing is being searched: during a search the answer is
+        // the results, not a recommendation.
+        val featured = if (state.query.isBlank()) {
+            state.visibleRows.firstOrNull()?.items?.firstOrNull()
+        } else {
+            null
+        }
+
+        featured?.let { hero ->
+            item(key = "hero-${hero.id}") {
+                HeroBanner(
+                    item = hero,
+                    onPlay = onItemClick,
+                    onOpen = onItemClick,
+                    modifier = Modifier.padding(bottom = Spacing.sm),
+                )
+            }
+        }
+
+        if (state.query.isBlank()) {
+            val (resume, favourites) = state.personalFor(state.tab)
+
+            if (resume.isNotEmpty()) {
+                item(key = "row-resume") {
+                    MobileRow(
+                        row = ContentRow(stringResource(R.string.row_continue_watching), resume),
+                        tab = state.tab,
+                        onItemClick = onItemClick,
+                    )
+                }
+            }
+            if (favourites.isNotEmpty()) {
+                item(key = "row-favourites") {
+                    MobileRow(
+                        row = ContentRow(stringResource(R.string.row_favourites), favourites),
+                        tab = state.tab,
+                        onItemClick = onItemClick,
+                    )
+                }
+            }
+        }
+
         items(state.visibleRows, key = { it.title }) { row ->
             MobileRow(row = row, tab = state.tab, onItemClick = onItemClick)
         }
@@ -325,7 +367,8 @@ private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
                 trackColor = MaurimaxTheme.colors.outline,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp),
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
             )
         }
 

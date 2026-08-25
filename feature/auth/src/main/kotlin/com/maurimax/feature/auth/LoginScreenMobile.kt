@@ -1,6 +1,7 @@
 package com.maurimax.feature.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,11 +44,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.data.AppLocale
+import com.maurimax.core.data.Graph
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
+import com.maurimax.core.designsystem.PosterWall
 import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
 
@@ -104,8 +107,14 @@ fun LoginScreenMobile(
             .background(colors.ground)
             .imePadding(),
     ) {
-        // A violet bloom behind the mark, so the top of the screen belongs to the
-        // brand rather than being an empty band above a form.
+        // The catalogue's own artwork, dimmed, standing in for a stock hero.
+        PosterWall(
+            posters = remember { Graph.rememberedPosters() },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // A violet bloom over it, so the top of the screen still belongs to the
+        // brand rather than to whichever posters happen to be cached.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -154,7 +163,8 @@ fun LoginScreenMobile(
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(Corners.card))
-                    .background(colors.surface)
+                    .background(colors.surface.copy(alpha = 0.96f))
+                    .border(1.dp, colors.outline, RoundedCornerShape(Corners.card))
                     .padding(Spacing.lg),
             ) {
                 OutlinedTextField(
