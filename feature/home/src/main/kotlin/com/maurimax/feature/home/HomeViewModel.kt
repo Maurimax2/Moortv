@@ -67,25 +67,25 @@ data class HomeUiState(
      */
     fun personalFor(tab: CatalogTab): Pair<List<MediaItem>, List<MediaItem>> {
         fun matches(item: MediaItem) = when (tab) {
-            CatalogTab.LIVE -> item.isLive
+            CatalogTab.LIVE, CatalogTab.SPORTS -> item.isLive
             CatalogTab.MOVIES -> item.kind == MediaKind.MOVIE
             CatalogTab.SERIES -> item.kind == MediaKind.SERIES
         }
         // Resume is meaningless for a live channel, so it is films and series only.
-        val resumable = if (tab == CatalogTab.LIVE) emptyList() else resume.filter(::matches)
+        val resumable = if (tab.isLiveSection) emptyList() else resume.filter(::matches)
         return resumable to favourites.filter(::matches)
     }
 
     /** Kept titles belonging to this tab. Never live: a channel has no file. */
     fun downloadsFor(tab: CatalogTab): List<MediaItem> =
-        if (tab == CatalogTab.LIVE) {
+        if (tab.isLiveSection) {
             emptyList()
         } else {
             playableDownloads.filter {
                 when (tab) {
                     CatalogTab.MOVIES -> it.kind == MediaKind.MOVIE
                     CatalogTab.SERIES -> it.kind == MediaKind.SERIES
-                    CatalogTab.LIVE -> false
+                    CatalogTab.LIVE, CatalogTab.SPORTS -> false
                 }
             }
         }

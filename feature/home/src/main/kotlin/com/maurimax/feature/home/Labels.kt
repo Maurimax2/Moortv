@@ -12,6 +12,7 @@ import com.maurimax.core.model.MediaKind
 internal val CatalogTab.labelRes: Int
     get() = when (this) {
         CatalogTab.LIVE -> R.string.tab_live
+        CatalogTab.SPORTS -> R.string.tab_sports
         CatalogTab.MOVIES -> R.string.tab_movies
         CatalogTab.SERIES -> R.string.tab_series
     }

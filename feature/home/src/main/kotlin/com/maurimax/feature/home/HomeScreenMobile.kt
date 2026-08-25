@@ -3,6 +3,7 @@ package com.maurimax.feature.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.designsystem.Artwork
@@ -53,7 +55,9 @@ import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.designsystem.badgeRes
 import com.maurimax.core.model.CatalogTab
+import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 
@@ -127,7 +131,13 @@ fun HomeScreenMobile(
                     )
 
                     state.isEmpty -> Text(
-                        text = stringResource(R.string.home_empty),
+                        text = stringResource(
+                            if (state.tab == CatalogTab.SPORTS) {
+                                R.string.sports_empty
+                            } else {
+                                R.string.home_empty
+                            },
+                        ),
                         color = MaurimaxTheme.colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -287,10 +297,25 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
     ) {
         // Only when nothing is being searched: during a search the answer is
         // the results, not a recommendation.
-        val featured = if (state.query.isBlank()) {
+        val featured = if (state.query.isBlank() && state.tab != CatalogTab.SPORTS) {
             state.visibleRows.firstOrNull()?.items?.firstOrNull()
         } else {
             null
+        }
+
+        // Football gets artwork of its own rather than a channel logo blown up:
+        // a live rail's key art is a small mark on black, which makes a poor
+        // hero however large you print it.
+        if (state.tab == CatalogTab.SPORTS && state.query.isBlank()) {
+            item(key = "sports-band") {
+                SportsBand(
+                    modifier = Modifier.padding(
+                        start = Spacing.md,
+                        end = Spacing.md,
+                        bottom = Spacing.sm,
+                    ),
+                )
+            }
         }
 
         featured?.let { hero ->
@@ -348,15 +373,32 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
 @Composable
 private fun MobileRow(row: ContentRow, tab: CatalogTab, onItemClick: (MediaItem) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Text(
-            text = row.title,
-            color = MaurimaxTheme.colors.textPrimary,
-            fontWeight = FontWeight.Bold,
-            fontSize = 17.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = Spacing.md),
-        )
+        // A panel can hand back a row with no name — a single catch-all
+        // category — and a blank header is worse than none.
+        if (row.title.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                modifier = Modifier.padding(horizontal = Spacing.md),
+            ) {
+                // Recognised faster than the words beside it.
+                Sports.badge(row.title)?.let { league ->
+                    Image(
+                        painter = painterResource(league.badgeRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = row.title,
+                    color = MaurimaxTheme.colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             contentPadding = PaddingValues(horizontal = Spacing.md),

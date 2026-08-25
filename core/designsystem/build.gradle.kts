@@ -29,6 +29,10 @@ kotlin {
 }
 
 dependencies {
+    // The design system knows about League so the badge for one lives beside
+    // the artwork it names, rather than in every screen that draws it.
+    api(project(":core:model"))
+
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.compose.foundation)
     api(libs.androidx.compose.ui)

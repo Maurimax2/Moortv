@@ -3,6 +3,7 @@
 package com.maurimax.feature.home
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -34,6 +35,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,7 +58,9 @@ import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.designsystem.badgeRes
 import com.maurimax.core.model.CatalogTab
+import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 
@@ -141,7 +145,13 @@ fun HomeScreenTv(
                     )
 
                     rows.isEmpty() -> Text(
-                        text = stringResource(R.string.home_empty),
+                        text = stringResource(
+                            if (state.tab == CatalogTab.SPORTS) {
+                                R.string.sports_empty
+                            } else {
+                                R.string.home_empty
+                            },
+                        ),
                         color = colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -286,7 +296,18 @@ private fun TvCatalog(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (hero != null) {
+        if (tab == CatalogTab.SPORTS) {
+            SportsBand(
+                height = 132.dp,
+                titleSize = 30,
+                badgeSize = 30.dp,
+                modifier = Modifier.padding(
+                    start = Spacing.tvOverscan,
+                    end = Spacing.tvOverscan,
+                    top = Spacing.sm,
+                ),
+            )
+        } else if (hero != null) {
             HeroCopy(
                 item = hero,
                 modifier = Modifier.padding(
@@ -384,14 +405,31 @@ private fun TvRow(
     onItemClick: (MediaItem) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Text(
-            text = row.title,
-            color = MaurimaxTheme.colors.textPrimary,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // A panel can hand back a row with no name, and a blank header is
+        // worse than none.
+        if (row.title.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                // Recognised across a room, which the words beside it are not.
+                Sports.badge(row.title)?.let { league ->
+                    Image(
+                        painter = painterResource(league.badgeRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+                Text(
+                    text = row.title,
+                    color = MaurimaxTheme.colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             // Room for a focused card to scale and draw its border outside.

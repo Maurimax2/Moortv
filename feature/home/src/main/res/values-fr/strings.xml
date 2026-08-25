@@ -25,8 +25,13 @@
     <string name="search_no_results">Aucun résultat pour \"%1$s\"</string>
 
     <string name="tab_live">Direct</string>
+    <string name="tab_sports">Sport</string>
     <string name="tab_movies">Films</string>
     <string name="tab_series">Séries</string>
+
+    <string name="sports_band_title">Sport</string>
+    <string name="sports_band_subtitle">Tous les matchs et les grands championnats au même endroit.</string>
+    <string name="sports_empty">Aucune chaîne de sport dans votre abonnement pour le moment.</string>
 
     <string name="kind_live">En direct</string>
     <string name="kind_catch_up">Replay</string>

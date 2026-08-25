@@ -25,8 +25,13 @@
     <string name="search_no_results">لا توجد نتائج لـ \"%1$s\"</string>
 
     <string name="tab_live">البث المباشر</string>
+    <string name="tab_sports">الرياضة</string>
     <string name="tab_movies">أفلام</string>
     <string name="tab_series">مسلسلات</string>
+
+    <string name="sports_band_title">الرياضة</string>
+    <string name="sports_band_subtitle">كل المباريات والبطولات الكبرى في مكان واحد.</string>
+    <string name="sports_empty">لا توجد قنوات رياضية في اشتراكك حالياً.</string>
 
     <string name="kind_live">مباشر</string>
     <string name="kind_catch_up">إعادة المشاهدة</string>

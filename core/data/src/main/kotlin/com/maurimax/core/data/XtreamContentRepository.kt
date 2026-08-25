@@ -9,6 +9,7 @@ import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.MediaKind
 import com.maurimax.core.model.Movie
 import com.maurimax.core.model.Series
+import com.maurimax.core.model.Sports
 import com.maurimax.core.network.XtreamApi
 import com.maurimax.core.network.XtreamUrls
 import com.maurimax.core.network.dto.CategoryDto
@@ -45,6 +46,8 @@ class XtreamContentRepository(
                 toMediaItem = { it.toItem() },
             )
 
+            CatalogTab.SPORTS -> sportsSections()
+
             CatalogTab.MOVIES -> sections(
                 categories = { movieCategories() },
                 items = { movies() },
@@ -58,6 +61,50 @@ class XtreamContentRepository(
                 categoryOf = Series::categoryId,
                 toMediaItem = { it.toItem() },
             )
+        }
+    }
+
+    /**
+     * The football section.
+     *
+     * Filtered before the row cap rather than after it, because on a panel with
+     * two hundred categories the sports ones are rarely in the first twelve —
+     * filtering afterwards would leave the section empty on exactly the panels
+     * that need it most.
+     */
+    private suspend fun sportsSections(): List<ContentRow> = coroutineScope {
+        val categoriesJob = async { liveCategories() }
+        val channelsJob = async { liveChannels() }
+
+        val channels = channelsJob.await()
+        val grouped = channels.groupBy(LiveChannel::categoryId)
+
+        val rows = categoriesJob.await()
+            .filter { Sports.isSport(it.name) }
+            .sortedBy { Sports.rank(it.name) }
+            .mapNotNull { category ->
+                val entries = grouped[category.id].orEmpty()
+                if (entries.isEmpty()) {
+                    null
+                } else {
+                    ContentRow(
+                        title = category.name,
+                        items = entries.take(maxItemsPerRow).map { it.toItem() },
+                    )
+                }
+            }
+            .take(maxRows)
+
+        if (rows.isNotEmpty()) return@coroutineScope rows
+
+        // Some resellers put every channel in one category. Reading the channel
+        // names instead still finds the football, and an unlabelled row under a
+        // tab called Sport needs no header to explain itself.
+        val byName = channels.filter { Sports.isSport(it.name) }
+        if (byName.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(ContentRow(title = "", items = byName.take(maxItemsPerRow * 3).map { it.toItem() }))
         }
     }
 

@@ -39,16 +39,28 @@ data class MediaItem(
  */
 enum class CatalogTab {
     LIVE,
+
+    /**
+     * Football and the rest of it, pulled out of the live catalogue.
+     *
+     * Not a fourth thing the portal serves — the panel has no genres — but the
+     * thing most of this audience opens the app for, and finding it inside two
+     * hundred alphabetical categories is not finding it.
+     */
+    SPORTS,
     MOVIES,
     SERIES,
     ;
+
+    /** Sport is live channels, so it reads from the same section of the panel. */
+    val isLiveSection: Boolean get() = this == LIVE || this == SPORTS
 
     /**
      * Live logos are wide marks on transparent backgrounds; film and series art
      * is portrait key art. Rendering one as the other looks broken, so the tab
      * carries its own shape.
      */
-    val usesPortraitArt: Boolean get() = this != LIVE
+    val usesPortraitArt: Boolean get() = !isLiveSection
 }
 
 /** A titled horizontal row of titles, e.g. "Continue watching". */

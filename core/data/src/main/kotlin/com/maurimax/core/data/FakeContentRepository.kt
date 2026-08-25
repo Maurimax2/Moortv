@@ -13,6 +13,7 @@ class FakeContentRepository : ContentRepository {
 
     override suspend fun rows(tab: CatalogTab): List<ContentRow> = when (tab) {
         CatalogTab.LIVE -> live
+        CatalogTab.SPORTS -> live
         CatalogTab.MOVIES -> movies
         CatalogTab.SERIES -> series
     }
