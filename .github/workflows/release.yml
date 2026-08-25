@@ -1,0 +1,55 @@
+name: Publish APKs
+
+on:
+  push:
+    branches: ["claude/biggest-project-prep-tkgf8p"]
+  workflow_dispatch:
+
+# Required to create and update the release these APKs are attached to.
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-apks
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble
+        run: ./gradlew :app:mobile:assembleDebug :app:tv:assembleDebug --console=plain
+
+      - name: Name the files for humans
+        run: |
+          mkdir -p dist
+          cp app/mobile/build/outputs/apk/debug/*.apk dist/maurimax-phone.apk
+          cp app/tv/build/outputs/apk/debug/*.apk     dist/maurimax-tv.apk
+          ls -la dist
+
+      # One release, always replaced, so the download URL never changes. A
+      # customer's link keeps working while the build behind it moves on.
+      - name: Publish to the rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest \
+            dist/maurimax-phone.apk \
+            dist/maurimax-tv.apk \
+            --title "MAURIMAX — latest build" \
+            --notes "Build ${{ github.sha }}. Debug build, unsigned for the Play Store." \
+            --latest

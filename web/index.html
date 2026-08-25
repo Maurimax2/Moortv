@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAURIMAX — تحميل التطبيق</title>
+<meta name="description" content="أول منصة ترفيهية في موريتانيا. حمّل تطبيق MAURIMAX للهاتف والتلفزيون.">
+<meta property="og:title" content="MAURIMAX">
+<meta property="og:description" content="أول منصة ترفيهية في موريتانيا">
+<meta property="og:image" content="/mark.png">
+<link rel="icon" href="/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800&family=Archivo:wght@700;900&display=swap">
+<style>
+  :root{
+    --ink:#0A0610; --surface:#140C1F; --raised:#1E1330; --outline:#332347;
+    --violet:#4E0D83; --violet-lit:#8B45D6; --orange:#E86D31; --orange-lit:#FF9152;
+    --fg:#F7F4FA; --fg2:#A9A0B8; --fg3:#6E6580;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--ink); color:var(--fg); min-height:100dvh;
+    font-family:"Noto Sans Arabic",system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:clamp(1.5rem,5vw,4rem) 1.25rem 3rem; position:relative; overflow-x:hidden;
+  }
+  /* Violet bloom, the same one that sits behind the mark on the sign-in screen. */
+  body::before{
+    content:""; position:absolute; top:-14rem; inset-inline-end:-10rem;
+    width:38rem; height:38rem; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(78,13,131,.55), transparent 68%);
+  }
+  .wrap{width:100%; max-width:44rem; position:relative; display:flex; flex-direction:column; align-items:center}
+  .lockup{display:flex; align-items:center; gap:.85rem; direction:ltr}
+  .lockup img{height:3.6rem; display:block}
+  .name{
+    font-family:Archivo,sans-serif; font-weight:900; font-size:clamp(1.7rem,6vw,2.4rem);
+    letter-spacing:.16em; direction:ltr;
+  }
+  .tag{
+    margin-top:1.4rem; color:var(--orange-lit); font-weight:800;
+    font-size:clamp(1.05rem,4vw,1.35rem); text-align:center; line-height:1.6;
+  }
+  .sub{margin-top:.75rem; color:var(--fg2); text-align:center; line-height:1.8; font-size:1rem}
+
+  .cards{
+    margin-top:2.5rem; width:100%; display:grid; gap:1rem;
+    grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+  }
+  .card{
+    background:var(--surface); border:1px solid var(--outline); border-radius:1rem;
+    padding:1.5rem; display:flex; flex-direction:column; align-items:center; gap:.4rem;
+  }
+  .card h2{font-size:1.15rem; font-weight:800}
+  .card p{color:var(--fg3); font-size:.9rem}
+  .btn{
+    margin-top:1rem; width:100%; padding:.95rem 1rem; border-radius:.75rem;
+    background:var(--orange); color:#fff; font-weight:800; font-size:1rem;
+    text-align:center; text-decoration:none; display:block;
+    transition:background .15s ease, transform .15s ease;
+  }
+  .btn:hover{background:var(--orange-lit)}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:3px solid var(--violet-lit); outline-offset:3px}
+  .btn.ghost{background:transparent; color:var(--fg); border:1px solid var(--outline)}
+  .btn.ghost:hover{background:var(--raised)}
+
+  .steps{
+    margin-top:2.5rem; width:100%; background:var(--surface);
+    border:1px solid var(--outline); border-radius:1rem; padding:1.5rem;
+  }
+  .steps h3{font-size:1rem; margin-bottom:.9rem}
+  .steps ol{margin:0; padding-inline-start:1.3rem; display:flex; flex-direction:column; gap:.55rem}
+  .steps li{color:var(--fg2); font-size:.95rem; line-height:1.7}
+  .note{margin-top:1.75rem; color:var(--fg3); font-size:.85rem; text-align:center; line-height:1.8}
+  footer{margin-top:2.5rem; color:var(--fg3); font-size:.8rem; direction:ltr; letter-spacing:.08em}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="lockup">
+      <img src="/mark.png" alt="">
+      <span class="name">MAURIMAX</span>
+    </div>
+
+    <p class="tag">أول منصة ترفيهية في موريتانيا</p>
+    <p class="sub">قنوات مباشرة وأفلام ومسلسلات. حمّل التطبيق وسجّل الدخول باسم المستخدم وكلمة المرور الخاصَّين باشتراكك.</p>
+
+    <div class="cards">
+      <section class="card">
+        <h2>الهاتف</h2>
+        <p>أندرويد 7 وما فوق</p>
+        <a class="btn" href="/apk">تحميل للهاتف</a>
+      </section>
+
+      <section class="card">
+        <h2>التلفزيون</h2>
+        <p>Android TV</p>
+        <a class="btn ghost" href="/tv">تحميل للتلفزيون</a>
+      </section>
+    </div>
+
+    <section class="steps">
+      <h3>طريقة التثبيت</h3>
+      <ol>
+        <li>اضغط على زر التحميل، ثم افتح الملف بعد انتهاء التنزيل.</li>
+        <li>إذا ظهر تنبيه، فعّل خيار «السماح بتثبيت التطبيقات من مصادر غير معروفة».</li>
+        <li>أكمل التثبيت، ثم افتح MAURIMAX وسجّل الدخول.</li>
+      </ol>
+    </section>
+
+    <p class="note">هذه نسخة تجريبية قيد التطوير، وليست النسخة النهائية من المتجر.</p>
+    <footer>MAURIMAX</footer>
+  </main>
+</body>
+</html>

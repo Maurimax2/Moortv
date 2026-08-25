@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": null,
+  "installCommand": null,
+  "framework": null,
+  "outputDirectory": "web",
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/apk",
+      "destination": "https://github.com/Maurimax2/Moortv/releases/latest/download/maurimax-phone.apk",
+      "permanent": false
+    },
+    {
+      "source": "/tv",
+      "destination": "https://github.com/Maurimax2/Moortv/releases/latest/download/maurimax-tv.apk",
+      "permanent": false
+    },
+    {
+      "source": "/download",
+      "destination": "/",
+      "permanent": false
+    }
+  ]
+}
