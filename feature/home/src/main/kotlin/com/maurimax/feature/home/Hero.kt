@@ -61,7 +61,10 @@ fun Hero(
     // on a first launch or a dead connection.
     val standIn = remember(item.id) { Showcase.pick(Showcase.all, item.title.ifBlank { item.id }) }
 
-    Box(modifier = modifier.fillMaxWidth().height(520.dp)) {
+    // 460 rather than filling most of the screen: on an 800dp phone that
+    // leaves exactly enough for one complete rail under it, and a rail cut off
+    // by the navigation is what makes a catalogue look like it ran out.
+    Box(modifier = modifier.fillMaxWidth().height(460.dp)) {
         Crossfade(
             targetState = item.id,
             animationSpec = tween(durationMillis = 420),
