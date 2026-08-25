@@ -186,6 +186,18 @@ class HomeViewModel(
         refreshLibrary()
     }
 
+    /**
+     * A download that failed is a dead end otherwise: the only control on it
+     * removes it, and the customer has to work out that they then have to press
+     * the same square again. On the connection this app is built for, a failed
+     * download is not an edge case.
+     */
+    fun retryDownload(item: MediaItem) {
+        Graph.removeDownload(item.id)
+        Graph.startDownload(item)
+        refreshLibrary()
+    }
+
     fun removeFromResume(item: MediaItem) {
         Graph.forgetProgress(item.id)
         refreshLibrary()

@@ -30,8 +30,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Assemble
-        run: ./gradlew :app:mobile:assembleDebug :app:tv:assembleDebug --console=plain
+      # Tests run here too, not only in the Android workflow. This job is the
+      # one that moves the public download link, and it must never point at a
+      # build that failed its checks just because it happens to compile.
+      - name: Test and assemble
+        run: ./gradlew test :app:mobile:assembleDebug :app:tv:assembleDebug --console=plain
 
       - name: Name the files for humans
         run: |

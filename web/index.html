@@ -74,6 +74,14 @@
   .btn.ghost{background:transparent; color:var(--fg); border:1px solid var(--outline)}
   .btn.ghost:hover{background:var(--raised)}
 
+  /* What the app does, before the install steps: a customer decides here. */
+  .features{margin-top:2.25rem; width:100%; display:grid; gap:.6rem; grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}
+  .feature{
+    background:var(--surface); border:1px solid var(--outline); border-radius:.75rem;
+    padding:.9rem 1rem; color:var(--fg2); font-size:.9rem; line-height:1.6;
+  }
+  .feature strong{display:block; color:var(--fg); font-weight:800; font-size:.95rem; margin-bottom:.15rem}
+
   .steps{
     margin-top:2.5rem; width:100%; background:var(--surface);
     border:1px solid var(--outline); border-radius:1rem; padding:1.5rem;
@@ -110,6 +118,13 @@
         <a class="btn ghost" href="/tv">أو حمّل الملف مباشرة</a>
       </section>
     </div>
+
+    <section class="features">
+      <div class="feature"><strong>الرياضة في قسم خاص</strong>كل قنوات المباريات والبطولات الكبرى مجمّعة، دون البحث بينها.</div>
+      <div class="feature"><strong>تحميل ومشاهدة بدون إنترنت</strong>احفظ الفيلم أو الحلقة على جهازك وشاهدها لاحقاً.</div>
+      <div class="feature"><strong>متابعة من حيث توقفت</strong>يتذكّر التطبيق أين وصلت في كل فيلم ومسلسل، مع قائمة المفضلة.</div>
+      <div class="feature"><strong>أكثر من اشتراك</strong>احفظ عدة حسابات وبدّل بينها دون إعادة كتابة كلمة المرور.</div>
+    </section>
 
     <section class="steps">
       <h3>طريقة التثبيت</h3>

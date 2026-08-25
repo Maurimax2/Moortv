@@ -113,6 +113,7 @@ private fun MaurimaxTvApp(
                 download = homeState.downloads.firstOrNull { it.item.id == chosen.id },
                 onDownload = { homeViewModel.download(chosen) },
                 onRemoveDownload = { homeViewModel.removeDownload(chosen) },
+                onRetryDownload = { homeViewModel.retryDownload(chosen) },
                 onRefresh = homeViewModel::refreshLibrary,
                 seasons = homeState.seasons,
                 episodesLoading = homeState.seasonsLoading,

@@ -161,9 +161,11 @@ object Downloads {
         var soFar = 0L
         var total = 0L
         var uri = ""
+        var known = false
 
         cursor?.use {
-            if (it.moveToFirst()) {
+            known = it.moveToFirst()
+            if (known) {
                 val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
                 soFar = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
                 total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
@@ -187,7 +189,10 @@ object Downloads {
                 uri = Uri.fromFile(file).toString()
                 soFar = file.length()
                 total = file.length()
-            } else if (cursor == null) {
+            } else if (!known) {
+                // Nothing knows about this any more and no file arrived, so it
+                // is not queued — it is gone. Saying so lets the customer start
+                // it again instead of watching 0% forever.
                 state = DownloadState.FAILED
             }
         }

@@ -6,6 +6,7 @@ import com.maurimax.core.network.dto.CategoryDto
 import com.maurimax.core.network.dto.LiveStreamDto
 import com.maurimax.core.network.dto.PlayerApiResponse
 import com.maurimax.core.network.dto.SeriesDto
+import com.maurimax.core.network.dto.SeriesInfoResponse
 import com.maurimax.core.network.dto.UserInfoDto
 import com.maurimax.core.network.dto.VodStreamDto
 import kotlinx.coroutines.test.runTest
@@ -29,6 +30,7 @@ class AuthRepositoryTest {
         override suspend fun vodStreams(username: String, password: String, categoryId: String?) = emptyList<VodStreamDto>()
         override suspend fun seriesCategories(username: String, password: String) = emptyList<CategoryDto>()
         override suspend fun series(username: String, password: String, categoryId: String?) = emptyList<SeriesDto>()
+        override suspend fun seriesInfo(username: String, password: String, seriesId: Int) = SeriesInfoResponse()
     }
 
     private fun repo(api: XtreamApi, store: CredentialStore = InMemoryCredentialStore()) =

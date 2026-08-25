@@ -72,6 +72,7 @@ fun DetailScreenTv(
     download: Download? = null,
     onDownload: () -> Unit = {},
     onRemoveDownload: () -> Unit = {},
+    onRetryDownload: () -> Unit = {},
     onRefresh: () -> Unit = {},
     seasons: List<Season> = emptyList(),
     episodesLoading: Boolean = false,
@@ -194,7 +195,15 @@ fun DetailScreenTv(
                                 )
                                 else -> "↓  " + stringResource(R.string.action_download)
                             },
-                            onClick = { if (download == null) onDownload() else onRemoveDownload() },
+                            onClick = {
+                                when {
+                                    download == null -> onDownload()
+                                    // A failed download must be one press from
+                                    // starting again, not two.
+                                    download.state == DownloadState.FAILED -> onRetryDownload()
+                                    else -> onRemoveDownload()
+                                }
+                            },
                         )
                     }
                 } else {

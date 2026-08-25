@@ -68,6 +68,7 @@ fun DetailScreenMobile(
     download: Download? = null,
     onDownload: () -> Unit = {},
     onRemoveDownload: () -> Unit = {},
+    onRetryDownload: () -> Unit = {},
     onRefresh: () -> Unit = {},
     seasons: List<Season> = emptyList(),
     episodesLoading: Boolean = false,
@@ -171,6 +172,7 @@ fun DetailScreenMobile(
                                 download = download,
                                 onDownload = onDownload,
                                 onRemove = onRemoveDownload,
+                                onRetry = onRetryDownload,
                             )
                         }
                     }
@@ -300,12 +302,14 @@ private fun DownloadButton(
     download: Download?,
     onDownload: () -> Unit,
     onRemove: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     val colors = MaurimaxTheme.colors
     val done = download?.state == DownloadState.DONE
     val running = download != null && !done && download.state != DownloadState.FAILED
+    val failed = download?.state == DownloadState.FAILED
     val label = stringResource(
-        if (download == null) R.string.action_download else R.string.action_download_remove,
+        if (download == null || failed) R.string.action_download else R.string.action_download_remove,
     )
 
     Box(
@@ -314,11 +318,18 @@ private fun DownloadButton(
             .size(46.dp)
             .clip(RoundedCornerShape(Corners.control))
             .background(if (done) colors.accent else colors.surfaceRaised)
-            .clickable { if (download == null) onDownload() else onRemove() }
+            .clickable {
+                when {
+                    download == null -> onDownload()
+                    failed -> onRetry()
+                    else -> onRemove()
+                }
+            }
             .semantics { contentDescription = label },
     ) {
         when {
             done -> Text("✓", color = colors.onAccent, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            failed -> Text("↻", color = colors.accentText, fontSize = 20.sp)
             running -> Text(
                 text = "${(download.progress * 100).toInt()}%",
                 color = colors.accentText,
