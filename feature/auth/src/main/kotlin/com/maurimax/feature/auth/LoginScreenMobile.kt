@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -49,6 +47,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -59,7 +58,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.data.AppLocale
 import com.maurimax.core.data.ThemeMode
-import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.MaurimaxDisplayFamily
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Showcase
@@ -140,28 +138,30 @@ fun LoginScreenMobile(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + Spacing.lg,
                 ),
         ) {
-            // The lockup is set as large as the narrowest phone can carry it.
-            // At 34sp it runs past both margins on a 320dp screen, and a
-            // clipped wordmark is a broken logo.
-            BoxWithConstraints {
-                val roomy = maxWidth >= 340.dp
-                BrandLockup(
-                    fontSize = if (roomy) 34.sp else 27.sp,
-                    markHeight = if (roomy) 54.dp else 44.dp,
+            // The mark alone, centred and large. The wordmark is already drawn
+            // inside the logo, so setting the name beside it said MAURIMAX
+            // twice and cost the mark the room to be seen.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Image(
+                    painter = painterResource(com.maurimax.core.designsystem.R.drawable.ic_mark),
+                    contentDescription = "MAURIMAX",
+                    modifier = Modifier.height(104.dp),
+                )
+
+                Text(
+                    text = stringResource(R.string.brand_tagline),
+                    fontFamily = MaurimaxDisplayFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    lineHeight = 30.sp,
+                    textAlign = TextAlign.Center,
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(top = Spacing.md),
                 )
             }
-
-            Text(
-                text = stringResource(R.string.brand_tagline),
-                fontFamily = MaurimaxDisplayFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                lineHeight = 28.sp,
-                color = colors.textSecondary,
-                modifier = Modifier
-                    .padding(top = Spacing.md)
-                    .widthIn(max = 300.dp),
-            )
 
             Spacer(Modifier.height(Spacing.xl))
 

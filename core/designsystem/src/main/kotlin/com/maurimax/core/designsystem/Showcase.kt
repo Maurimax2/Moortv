@@ -76,12 +76,13 @@ object Showcase {
     /**
      * What plays behind sign-in, in order.
      *
-     * Football, film, football, film — and it opens on the football, because
-     * that is what most of this audience came for and the first frame is the
-     * only one guaranteed to be seen. The football frames are composed here
-     * rather than found: the supplied set has cut-out players and league
-     * crests but no wide artwork, so each one is a player standing on a wash
-     * of their competition's colour with the crest behind them.
+     * League poster, film poster, league poster, film poster — opening on
+     * La Liga, because that is what most of this audience came for and the
+     * first frame is the only one guaranteed to be seen.
+     *
+     * The football frames are the competitions' own campaign artwork rather
+     * than anything composed here: it is already built to carry a title at
+     * poster scale, which is exactly the job.
      */
     val backdrops: List<Int> = listOf(
         R.drawable.backdrop_laliga,
@@ -90,8 +91,10 @@ object Showcase {
         R.drawable.poster_casadepapel,
         R.drawable.backdrop_ucl,
         R.drawable.poster_got,
-        R.drawable.backdrop_saudi,
+        R.drawable.backdrop_seriea,
         R.drawable.poster_oppenheimer,
+        R.drawable.backdrop_ligue1,
+        R.drawable.poster_breakingbad,
     )
 
     /**
