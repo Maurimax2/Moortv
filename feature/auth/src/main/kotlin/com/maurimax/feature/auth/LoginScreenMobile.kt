@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -139,7 +140,16 @@ fun LoginScreenMobile(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + Spacing.lg,
                 ),
         ) {
-            BrandLockup(fontSize = 34.sp, markHeight = 54.dp)
+            // The lockup is set as large as the narrowest phone can carry it.
+            // At 34sp it runs past both margins on a 320dp screen, and a
+            // clipped wordmark is a broken logo.
+            BoxWithConstraints {
+                val roomy = maxWidth >= 340.dp
+                BrandLockup(
+                    fontSize = if (roomy) 34.sp else 27.sp,
+                    markHeight = if (roomy) 54.dp else 44.dp,
+                )
+            }
 
             Text(
                 text = stringResource(R.string.brand_tagline),
