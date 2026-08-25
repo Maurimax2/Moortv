@@ -54,6 +54,14 @@
   }
   .card h2{font-size:1.15rem; font-weight:800}
   .card p{color:var(--fg3); font-size:.9rem}
+  .code-lead{margin-top:.9rem; color:var(--fg2); font-size:.9rem; text-align:center}
+  .code-lead strong{color:var(--fg); direction:ltr; display:inline-block}
+  /* The one thing a customer retypes on a remote, so it gets size and tracking. */
+  .code{
+    margin-top:.5rem; font-family:Archivo,ui-monospace,monospace; font-weight:900;
+    font-size:clamp(2rem,9vw,2.9rem); letter-spacing:.16em; color:var(--orange-lit);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+  }
   .btn{
     margin-top:1rem; width:100%; padding:.95rem 1rem; border-radius:.75rem;
     background:var(--orange); color:#fff; font-weight:800; font-size:1rem;
@@ -96,8 +104,10 @@
 
       <section class="card">
         <h2>التلفزيون</h2>
-        <p>Android TV</p>
-        <a class="btn ghost" href="/tv">تحميل للتلفزيون</a>
+        <p>Android TV و Fire TV</p>
+        <p class="code-lead">افتح تطبيق <strong>Downloader</strong> وأدخل الرمز</p>
+        <p class="code" dir="ltr" translate="no">4129127</p>
+        <a class="btn ghost" href="/tv">أو حمّل الملف مباشرة</a>
       </section>
     </div>
 
@@ -107,6 +117,13 @@
         <li>اضغط على زر التحميل، ثم افتح الملف بعد انتهاء التنزيل.</li>
         <li>إذا ظهر تنبيه، فعّل خيار «السماح بتثبيت التطبيقات من مصادر غير معروفة».</li>
         <li>أكمل التثبيت، ثم افتح MAURIMAX وسجّل الدخول.</li>
+      </ol>
+
+      <h3 style="margin-top:1.5rem">على التلفزيون</h3>
+      <ol>
+        <li>ثبّت تطبيق <strong dir="ltr">Downloader</strong> من متجر التطبيقات في تلفزيونك.</li>
+        <li>افتحه وأدخل الرمز <strong dir="ltr" translate="no">4129127</strong> ثم اضغط «Go».</li>
+        <li>قبل التثبيت، فعّل «تثبيت التطبيقات من مصادر غير معروفة» من إعدادات التلفزيون.</li>
       </ol>
     </section>
 

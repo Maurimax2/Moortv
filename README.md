@@ -5,6 +5,18 @@ Android streaming app for **phone, tablet and Android TV** — one Kotlin codeba
 > Status: M0/M1 — both apps build and CI is green. The catalog is still
 > placeholder data. See [`docs/PLAN.md`](docs/PLAN.md) for the architecture and milestone plan.
 
+## Installing
+
+**On a TV** — install **Downloader** from the Fire TV or Android TV app store, open
+it and enter code **4129127**. Enable "apps from unknown sources" in the TV's
+settings before installing.
+
+**On a phone** — [download the APK](https://github.com/Maurimax2/Moortv/releases/download/latest/maurimax-phone.apk)
+and tap it.
+
+Both links always serve the newest build: each push replaces the same `latest`
+release, so a shared link or a Downloader code never goes stale.
+
 ## Getting an APK
 
 No local Android SDK needed. Every push builds both apps in GitHub Actions and
