@@ -3,5 +3,5 @@
     <!-- The mark is drawn on white; the adaptive background keeps it that way. -->
     <color name="ic_launcher_background">#FFFFFF</color>
     <!-- Ground before Compose draws. Matches the default (light) theme. -->
-    <color name="maurimax_ground">#0A0610</color>
+    <color name="maurimax_ground">#08080A</color>
 </resources>
