@@ -46,6 +46,10 @@ data class SavedItem(
  * anything server-side would need infrastructure that does not exist yet. The
  * cost is that the list does not follow a customer to a second device, which is
  * the right trade for now and the thing to revisit if accounts ever sync.
+ *
+ * Every list is kept per account. Two lines on one box are two different
+ * people — usually a parent and a child — and showing one of them what the
+ * other stopped watching is both wrong and, occasionally, awkward.
  */
 object Library {
 
@@ -65,8 +69,8 @@ object Library {
 
     // ---- continue watching ------------------------------------------------
 
-    fun recordProgress(context: Context, item: SavedItem) {
-        val existing = resumeList(context).filterNot { it.id == item.id }
+    fun recordProgress(context: Context, owner: String, item: SavedItem) {
+        val existing = resumeList(context, owner).filterNot { it.id == item.id }
         val fresh = item.copy(updatedAt = System.currentTimeMillis())
 
         val updated = if (fresh.progress >= DONE_PROGRESS || fresh.progress < MIN_PROGRESS) {
@@ -75,63 +79,96 @@ object Library {
         } else {
             (listOf(fresh) + existing).take(MAX_RESUME)
         }
-        write(context, KEY_RESUME, updated)
+        write(context, owner, KEY_RESUME, updated)
     }
 
     /** Most recent first, which is the only order this row makes sense in. */
-    fun continueWatching(context: Context): List<SavedItem> =
-        resumeList(context).sortedByDescending { it.updatedAt }
+    fun continueWatching(context: Context, owner: String): List<SavedItem> =
+        resumeList(context, owner).sortedByDescending { it.updatedAt }
 
-    fun resumePosition(context: Context, itemId: String): Long =
-        resumeList(context).firstOrNull { it.id == itemId }?.positionMs ?: 0L
+    fun resumePosition(context: Context, owner: String, itemId: String): Long =
+        resumeList(context, owner).firstOrNull { it.id == itemId }?.positionMs ?: 0L
 
-    fun forget(context: Context, itemId: String) {
-        write(context, KEY_RESUME, resumeList(context).filterNot { it.id == itemId })
+    fun forget(context: Context, owner: String, itemId: String) {
+        write(context, owner, KEY_RESUME, resumeList(context, owner).filterNot { it.id == itemId })
     }
 
     // ---- favourites -------------------------------------------------------
 
-    fun favourites(context: Context): List<SavedItem> =
-        read(context, KEY_FAVOURITES).sortedByDescending { it.updatedAt }
+    fun favourites(context: Context, owner: String): List<SavedItem> =
+        read(context, owner, KEY_FAVOURITES).sortedByDescending { it.updatedAt }
 
-    fun isFavourite(context: Context, itemId: String): Boolean =
-        read(context, KEY_FAVOURITES).any { it.id == itemId }
+    fun isFavourite(context: Context, owner: String, itemId: String): Boolean =
+        read(context, owner, KEY_FAVOURITES).any { it.id == itemId }
 
     /** Returns the new state, so a caller can show it without re-reading. */
-    fun toggleFavourite(context: Context, item: SavedItem): Boolean {
-        val current = read(context, KEY_FAVOURITES)
+    fun toggleFavourite(context: Context, owner: String, item: SavedItem): Boolean {
+        val current = read(context, owner, KEY_FAVOURITES)
         val without = current.filterNot { it.id == item.id }
         val nowFavourite = without.size == current.size
 
         write(
             context,
+            owner,
             KEY_FAVOURITES,
             if (nowFavourite) listOf(item.copy(updatedAt = System.currentTimeMillis())) + without else without,
         )
         return nowFavourite
     }
 
+    /** Drops everything an account saved, for when it is removed from the device. */
+    fun erase(context: Context, owner: String) {
+        prefs(context, owner).edit().clear().apply()
+    }
+
     // ---- storage ----------------------------------------------------------
 
-    private fun resumeList(context: Context) = read(context, KEY_RESUME)
+    private fun resumeList(context: Context, owner: String) = read(context, owner, KEY_RESUME)
 
-    private fun read(context: Context, key: String): List<SavedItem> {
-        val raw = prefs(context).getString(key, null) ?: return emptyList()
+    private fun read(context: Context, owner: String, key: String): List<SavedItem> {
+        val raw = prefs(context, owner).getString(key, null) ?: return emptyList()
         // A stored blob written by an older build must never crash the app.
         return runCatching {
             json.decodeFromString(ListSerializer(SavedItem.serializer()), raw)
         }.getOrDefault(emptyList())
     }
 
-    private fun write(context: Context, key: String, items: List<SavedItem>) {
-        prefs(context).edit()
+    private fun write(context: Context, owner: String, key: String, items: List<SavedItem>) {
+        prefs(context, owner).edit()
             .putString(key, json.encodeToString(ListSerializer(SavedItem.serializer()), items))
             .apply()
     }
 
-    private fun prefs(context: Context) =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    /**
+     * One file per account, plus a one-time hand-over of the shared file that
+     * builds before multiple accounts wrote to.
+     *
+     * Only the first account to ask inherits it: back then there was exactly
+     * one account, so it is that customer's history, and a second line added
+     * afterwards must start empty rather than adopt someone else's.
+     */
+    private fun prefs(context: Context, owner: String) =
+        context.applicationContext.let { app ->
+            val shared = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (owner.isBlank()) return@let shared
+
+            val mine = app.getSharedPreferences("$PREFS.${owner.fileSafe()}", Context.MODE_PRIVATE)
+            if (shared.contains(KEY_RESUME) || shared.contains(KEY_FAVOURITES)) {
+                mine.edit()
+                    .putString(KEY_RESUME, shared.getString(KEY_RESUME, null))
+                    .putString(KEY_FAVOURITES, shared.getString(KEY_FAVOURITES, null))
+                    .apply()
+                shared.edit().clear().apply()
+            }
+            mine
+        }
 }
+
+/**
+ * A username becomes part of a file name, and a panel is free to hand out one
+ * with a slash or a dot in it.
+ */
+private fun String.fileSafe() = map { if (it.isLetterOrDigit()) it else '_' }.joinToString("")
 
 /** Flattens a catalogue item for storage. */
 fun MediaItem.toSavedItem(positionMs: Long = 0, durationMs: Long = 0) = SavedItem(

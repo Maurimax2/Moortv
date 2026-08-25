@@ -37,23 +37,48 @@ object Graph {
     fun rememberedPosters(): List<String> =
         if (ready) PosterMemory.load(appContext) else emptyList()
 
+    // ---- accounts ---------------------------------------------------------
+
+    /**
+     * Whose lists to read. Every saved list belongs to one account, so this is
+     * the key to all of them; blank while signed out, when there is nothing
+     * personal to show anyway.
+     */
+    val activeUser: String get() = if (ready) credentialStore.load()?.username.orEmpty() else ""
+
+    fun savedAccounts(): List<Credentials> = if (ready) credentialStore.all() else emptyList()
+
+    /** Removes an account and everything it saved. */
+    fun forgetAccount(username: String) {
+        if (!ready) return
+        credentialStore.forget(username)
+        Library.erase(appContext, username)
+    }
+
     // ---- library ----------------------------------------------------------
     // Thin passthroughs so the UI never has to hold a Context of its own.
 
     fun continueWatching(): List<SavedItem> =
-        if (ready) Library.continueWatching(appContext) else emptyList()
+        if (ready) Library.continueWatching(appContext, activeUser) else emptyList()
 
     fun favourites(): List<SavedItem> =
-        if (ready) Library.favourites(appContext) else emptyList()
+        if (ready) Library.favourites(appContext, activeUser) else emptyList()
 
     fun isFavourite(itemId: String): Boolean =
-        if (ready) Library.isFavourite(appContext, itemId) else false
+        if (ready) Library.isFavourite(appContext, activeUser, itemId) else false
 
     fun toggleFavourite(item: SavedItem): Boolean =
-        if (ready) Library.toggleFavourite(appContext, item) else false
+        if (ready) Library.toggleFavourite(appContext, activeUser, item) else false
 
     fun forgetProgress(itemId: String) {
-        if (ready) Library.forget(appContext, itemId)
+        if (ready) Library.forget(appContext, activeUser, itemId)
+    }
+
+    fun resumePosition(itemId: String): Long =
+        if (ready) Library.resumePosition(appContext, activeUser, itemId) else 0L
+
+    fun recordProgress(item: SavedItem) {
+        if (ready) Library.recordProgress(appContext, activeUser, item)
     }
 
     fun contentRepository(credentials: Credentials): XtreamContentRepository =

@@ -64,6 +64,8 @@ import com.maurimax.core.model.MediaItem
 fun HomeScreenTv(
     viewModel: HomeViewModel,
     onItemClick: (MediaItem) -> Unit = {},
+    account: String = "",
+    onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,6 +74,8 @@ fun HomeScreenTv(
         onTabSelect = viewModel::selectTab,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
+        account = account,
+        onSwitchAccount = onSwitchAccount,
         modifier = modifier,
     )
 }
@@ -91,6 +95,8 @@ fun HomeScreenTv(
     onTabSelect: (CatalogTab) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
+    account: String = "",
+    onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
@@ -110,6 +116,8 @@ fun HomeScreenTv(
             TvTabBar(
                 tab = state.tab,
                 onTabSelect = onTabSelect,
+                account = account,
+                onSwitchAccount = onSwitchAccount,
                 modifier = Modifier.padding(
                     start = Spacing.tvOverscan,
                     end = Spacing.tvOverscan,
@@ -177,6 +185,8 @@ private fun Backdrop(item: MediaItem) {
 private fun TvTabBar(
     tab: CatalogTab,
     onTabSelect: (CatalogTab) -> Unit,
+    account: String,
+    onSwitchAccount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
@@ -219,6 +229,40 @@ private fun TvTabBar(
                     fontSize = 17.sp,
                     modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 )
+            }
+        }
+
+        // The line in use sits at the far end of the bar, where a D-pad reaches
+        // it by travelling past the tabs rather than through them.
+        if (account.isNotBlank()) {
+            Box(modifier = Modifier.weight(1f))
+
+            Card(
+                onClick = onSwitchAccount,
+                shape = CardDefaults.shape(RoundedCornerShape(50)),
+                colors = CardDefaults.colors(
+                    containerColor = colors.identity,
+                    focusedContainerColor = colors.identity,
+                ),
+                border = CardDefaults.border(
+                    focusedBorder = Border(
+                        BorderStroke(3.dp, colors.accent),
+                        shape = RoundedCornerShape(50),
+                    ),
+                ),
+                scale = CardDefaults.scale(focusedScale = 1.08f),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Text(
+                        text = account.take(1).uppercase(),
+                        color = colors.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
             }
         }
     }

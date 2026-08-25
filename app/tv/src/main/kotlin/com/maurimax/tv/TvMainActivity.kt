@@ -107,6 +107,10 @@ private fun MaurimaxTvApp(
         } else {
             HomeScreenTv(
                 viewModel = homeViewModel,
+                account = credentials.username,
+                // Signing out keeps the account on the device, so this is a
+                // switch back to the list rather than a goodbye.
+                onSwitchAccount = loginViewModel::signOut,
                 // A channel plays on OK — nobody wants a page about a channel.
                 // Films and series open their own page first.
                 onItemClick = { item -> if (item.isLive) play(item) else opened = item },

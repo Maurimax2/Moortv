@@ -4,17 +4,49 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.maurimax.core.model.Credentials
-
-/** Where the customer's username and password live between launches. */
-interface CredentialStore {
-    fun load(): Credentials?
-    fun save(credentials: Credentials)
-    fun clear()
-}
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
- * Backed by EncryptedSharedPreferences, so the password is encrypted at rest
- * with a key held in the Android keystore rather than sitting in plaintext XML.
+ * The accounts saved on this device, and which one is signed in.
+ *
+ * A household shares one television and one subscription reseller, so the same
+ * box is routinely used with more than one line — a second screen for the
+ * children, a line that has not expired yet, a line bought for the football.
+ * Retyping a password every time is the thing that makes that painful, so every
+ * account the customer has used stays here and is one tap away.
+ *
+ * There is still no host: every account on this list belongs to the one portal
+ * compiled into the build.
+ */
+interface CredentialStore {
+    /** The account currently signed in, or null when signed out. */
+    fun load(): Credentials?
+
+    /** Signs in as this account, remembering it if it is new. */
+    fun save(credentials: Credentials)
+
+    /** Signs out. The account stays on the device so it can be picked again. */
+    fun clear()
+
+    /** Every account on this device, most recently used first. */
+    fun all(): List<Credentials>
+
+    /** Removes an account from the device entirely, password and all. */
+    fun forget(username: String)
+}
+
+@Serializable
+private data class StoredAccount(
+    val username: String,
+    val password: String,
+    val lastUsed: Long = 0,
+)
+
+/**
+ * Backed by EncryptedSharedPreferences, so passwords are encrypted at rest with
+ * a key held in the Android keystore rather than sitting in plaintext XML.
  */
 class EncryptedCredentialStore(context: Context) : CredentialStore {
 
@@ -29,35 +61,107 @@ class EncryptedCredentialStore(context: Context) : CredentialStore {
             key,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
+        ).also(::migrate)
     }
 
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
     override fun load(): Credentials? {
-        val user = prefs.getString(KEY_USER, null) ?: return null
-        val pass = prefs.getString(KEY_PASS, null) ?: return null
-        return Credentials(user, pass)
+        val active = prefs.getString(KEY_ACTIVE, null) ?: return null
+        return stored().firstOrNull { it.username == active }?.let {
+            Credentials(it.username, it.password)
+        }
     }
 
     override fun save(credentials: Credentials) {
-        prefs.edit()
-            .putString(KEY_USER, credentials.username)
-            .putString(KEY_PASS, credentials.password)
-            .apply()
+        val rest = stored().filterNot { it.username == credentials.username }
+        val entry = StoredAccount(
+            username = credentials.username,
+            password = credentials.password,
+            lastUsed = System.currentTimeMillis(),
+        )
+        write(listOf(entry) + rest)
+        prefs.edit().putString(KEY_ACTIVE, credentials.username).apply()
     }
 
     override fun clear() {
-        prefs.edit().clear().apply()
+        // Only the pointer: signing out of one line must not wipe the others.
+        prefs.edit().remove(KEY_ACTIVE).apply()
+    }
+
+    override fun all(): List<Credentials> =
+        stored().sortedByDescending { it.lastUsed }.map { Credentials(it.username, it.password) }
+
+    override fun forget(username: String) {
+        write(stored().filterNot { it.username == username })
+        if (prefs.getString(KEY_ACTIVE, null) == username) clear()
+    }
+
+    private fun stored(): List<StoredAccount> {
+        val raw = prefs.getString(KEY_ACCOUNTS, null) ?: return emptyList()
+        // A blob written by an older build must never crash the app.
+        return runCatching {
+            json.decodeFromString(ListSerializer(StoredAccount.serializer()), raw)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun write(accounts: List<StoredAccount>) {
+        prefs.edit()
+            .putString(KEY_ACCOUNTS, json.encodeToString(ListSerializer(StoredAccount.serializer()), accounts))
+            .apply()
+    }
+
+    /**
+     * Earlier builds held exactly one account in two flat keys. Anyone updating
+     * would otherwise be signed out and asked to type their password again, so
+     * the old pair is folded into the list once and then removed.
+     */
+    private fun migrate(prefs: android.content.SharedPreferences) {
+        val user = prefs.getString(LEGACY_USER, null) ?: return
+        val pass = prefs.getString(LEGACY_PASS, null)
+
+        if (pass != null && !prefs.contains(KEY_ACCOUNTS)) {
+            val seeded = listOf(StoredAccount(user, pass, System.currentTimeMillis()))
+            prefs.edit()
+                .putString(KEY_ACCOUNTS, json.encodeToString(ListSerializer(StoredAccount.serializer()), seeded))
+                .putString(KEY_ACTIVE, user)
+                .apply()
+        }
+        prefs.edit().remove(LEGACY_USER).remove(LEGACY_PASS).apply()
     }
 
     private companion object {
-        const val KEY_USER = "username"
-        const val KEY_PASS = "password"
+        const val KEY_ACCOUNTS = "accounts"
+        const val KEY_ACTIVE = "active"
+        const val LEGACY_USER = "username"
+        const val LEGACY_PASS = "password"
     }
 }
 
 /** For tests and previews. */
-class InMemoryCredentialStore(private var credentials: Credentials? = null) : CredentialStore {
-    override fun load() = credentials
-    override fun save(credentials: Credentials) { this.credentials = credentials }
-    override fun clear() { credentials = null }
+class InMemoryCredentialStore(credentials: Credentials? = null) : CredentialStore {
+
+    private val accounts = mutableListOf<Credentials>()
+    private var active: String? = null
+
+    init {
+        credentials?.let { save(it) }
+    }
+
+    override fun load(): Credentials? = accounts.firstOrNull { it.username == active }
+
+    override fun save(credentials: Credentials) {
+        accounts.removeAll { it.username == credentials.username }
+        accounts.add(0, credentials)
+        active = credentials.username
+    }
+
+    override fun clear() { active = null }
+
+    override fun all(): List<Credentials> = accounts.toList()
+
+    override fun forget(username: String) {
+        accounts.removeAll { it.username == username }
+        if (active == username) active = null
+    }
 }

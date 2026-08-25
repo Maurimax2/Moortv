@@ -42,6 +42,7 @@ import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.model.Credentials
 
 @Composable
 fun LoginScreenTv(
@@ -62,6 +63,10 @@ fun LoginScreenTv(
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
+        onUseAccount = viewModel::useAccount,
+        onForgetAccount = viewModel::forgetAccount,
+        onAddAccount = viewModel::addAccount,
+        onCancelAdd = viewModel::cancelAdd,
         modifier = modifier,
     )
 }
@@ -76,10 +81,17 @@ fun LoginScreenTv(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onUseAccount: (Credentials) -> Unit = {},
+    onForgetAccount: (Credentials) -> Unit = {},
+    onAddAccount: () -> Unit = {},
+    onCancelAdd: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val usernameField = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { usernameField.requestFocus() } }
+    // The picker owns focus when it is showing, so only claim it for the form.
+    LaunchedEffect(state.showingPicker) {
+        if (!state.showingPicker) runCatching { usernameField.requestFocus() }
+    }
 
     Row(
         modifier = modifier
@@ -129,77 +141,113 @@ fun LoginScreenTv(
             )
         }
 
-        MaurimaxFormColors {
+        if (state.showingPicker) {
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.Center,
             ) {
-                OutlinedTextField(
-                    value = state.username,
-                    onValueChange = onUsernameChange,
-                    label = { Text(stringResource(R.string.auth_username)) },
-                    singleLine = true,
-                    enabled = !state.signingIn,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = tvFieldColors(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(usernameField),
+                AccountListTv(
+                    accounts = state.accounts,
+                    signingIn = state.signingIn,
+                    error = state.error,
+                    onUse = onUseAccount,
+                    onForget = onForgetAccount,
+                    onAdd = onAddAccount,
                 )
-
-                OutlinedTextField(
-                    value = state.password,
-                    onValueChange = onPasswordChange,
-                    label = { Text(stringResource(R.string.auth_password)) },
-                    singleLine = true,
-                    enabled = !state.signingIn,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    colors = tvFieldColors(),
+            }
+        } else {
+            MaurimaxFormColors {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = Spacing.md),
-                )
-
-                state.error?.let { failure ->
-                    Text(
-                        text = failure.message(),
-                        color = MaurimaxTheme.colors.accentText,
-                        fontSize = 16.sp,
-                        lineHeight = 23.sp,
-                        modifier = Modifier.padding(top = Spacing.md),
-                    )
-                }
-
-                Button(
-                    onClick = onSubmit,
-                    enabled = state.canSubmit,
-                    shape = RoundedCornerShape(Corners.control),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaurimaxTheme.colors.accent,
-                        contentColor = MaurimaxTheme.colors.textPrimary,
-                        disabledContainerColor = MaurimaxTheme.colors.surfaceRaised,
-                        disabledContentColor = MaurimaxTheme.colors.textTertiary,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(top = Spacing.lg),
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    OutlinedTextField(
+                        value = state.username,
+                        onValueChange = onUsernameChange,
+                        label = { Text(stringResource(R.string.auth_username)) },
+                        singleLine = true,
+                        enabled = !state.signingIn,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = tvFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(usernameField),
+                    )
+
+                    OutlinedTextField(
+                        value = state.password,
+                        onValueChange = onPasswordChange,
+                        label = { Text(stringResource(R.string.auth_password)) },
+                        singleLine = true,
+                        enabled = !state.signingIn,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+                        colors = tvFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = Spacing.md),
+                    )
+
+                    state.error?.let { failure ->
                         Text(
-                            text = stringResource(
-                                if (state.signingIn) R.string.auth_signing_in else R.string.auth_sign_in,
-                            ),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 17.sp,
+                            text = failure.message(),
+                            color = MaurimaxTheme.colors.accentText,
+                            fontSize = 16.sp,
+                            lineHeight = 23.sp,
+                            modifier = Modifier.padding(top = Spacing.md),
                         )
+                    }
+
+                    Button(
+                        onClick = onSubmit,
+                        enabled = state.canSubmit,
+                        shape = RoundedCornerShape(Corners.control),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaurimaxTheme.colors.accent,
+                            contentColor = MaurimaxTheme.colors.textPrimary,
+                            disabledContainerColor = MaurimaxTheme.colors.surfaceRaised,
+                            disabledContentColor = MaurimaxTheme.colors.textTertiary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(top = Spacing.lg),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = stringResource(
+                                    if (state.signingIn) R.string.auth_signing_in else R.string.auth_sign_in,
+                                ),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp,
+                            )
+                        }
+                    }
+
+                    // Only when there is a list to go back to.
+                    if (state.accounts.isNotEmpty()) {
+                        Button(
+                            onClick = onCancelAdd,
+                            shape = RoundedCornerShape(Corners.control),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaurimaxTheme.colors.surfaceRaised,
+                                contentColor = MaurimaxTheme.colors.textSecondary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp)
+                                .padding(top = Spacing.sm),
+                        ) {
+                            Text(stringResource(R.string.accounts_cancel), fontSize = 16.sp)
+                        }
                     }
                 }
             }

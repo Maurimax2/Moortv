@@ -53,6 +53,7 @@ import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.PosterWall
 import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.model.Credentials
 
 @Composable
 fun LoginScreenMobile(
@@ -73,6 +74,10 @@ fun LoginScreenMobile(
         onUsernameChange = viewModel::onUsernameChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::signIn,
+        onUseAccount = viewModel::useAccount,
+        onForgetAccount = viewModel::forgetAccount,
+        onAddAccount = viewModel::addAccount,
+        onCancelAdd = viewModel::cancelAdd,
         modifier = modifier,
     )
 }
@@ -96,10 +101,13 @@ fun LoginScreenMobile(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onUseAccount: (Credentials) -> Unit = {},
+    onForgetAccount: (Credentials) -> Unit = {},
+    onAddAccount: () -> Unit = {},
+    onCancelAdd: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
-    var passwordVisible by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -156,96 +164,24 @@ fun LoginScreenMobile(
 
             Spacer(Modifier.height(Spacing.xl))
 
-            // The form sits on a raised card so the two fields read as one object.
-            Column(
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                modifier = Modifier
-                    .widthIn(max = 420.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(Corners.card))
-                    .background(colors.surface.copy(alpha = 0.96f))
-                    .border(1.dp, colors.outline, RoundedCornerShape(Corners.card))
-                    .padding(Spacing.lg),
-            ) {
-                OutlinedTextField(
-                    value = state.username,
-                    onValueChange = onUsernameChange,
-                    label = { Text(stringResource(R.string.auth_username)) },
-                    singleLine = true,
-                    enabled = !state.signingIn,
-                    shape = RoundedCornerShape(Corners.control),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next,
-                    ),
-                    colors = fieldColors(),
-                    modifier = Modifier.fillMaxWidth(),
+            if (state.showingPicker) {
+                AccountList(
+                    accounts = state.accounts,
+                    signingIn = state.signingIn,
+                    error = state.error,
+                    onUse = onUseAccount,
+                    onForget = onForgetAccount,
+                    onAdd = onAddAccount,
                 )
-
-                OutlinedTextField(
-                    value = state.password,
-                    onValueChange = onPasswordChange,
-                    label = { Text(stringResource(R.string.auth_password)) },
-                    singleLine = true,
-                    enabled = !state.signingIn,
-                    shape = RoundedCornerShape(Corners.control),
-                    visualTransformation = if (passwordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    trailingIcon = {
-                        TextButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Text(
-                                text = stringResource(
-                                    if (passwordVisible) R.string.auth_hide else R.string.auth_show,
-                                ),
-                                color = colors.textSecondary,
-                                fontSize = 13.sp,
-                            )
-                        }
-                    },
-                    colors = fieldColors(),
-                    modifier = Modifier.fillMaxWidth(),
+            } else {
+                SignInCard(
+                    state = state,
+                    onUsernameChange = onUsernameChange,
+                    onPasswordChange = onPasswordChange,
+                    onSubmit = onSubmit,
+                    // Only offered when there is a list to go back to.
+                    onCancel = onCancelAdd.takeIf { state.accounts.isNotEmpty() },
                 )
-
-                state.error?.let { failure ->
-                    ErrorNote(failure)
-                }
-
-                Button(
-                    onClick = onSubmit,
-                    enabled = state.canSubmit,
-                    shape = RoundedCornerShape(Corners.control),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = colors.onAccent,
-                        disabledContainerColor = colors.surfaceRaised,
-                        disabledContentColor = colors.textTertiary,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                ) {
-                    if (state.signingIn) {
-                        CircularProgressIndicator(
-                            color = colors.onAccent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.auth_sign_in),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                        )
-                    }
-                }
             }
 
             Spacer(Modifier.height(Spacing.xl))
@@ -286,3 +222,121 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedLabelColor = MaurimaxTheme.colors.textSecondary,
     cursorColor = MaurimaxTheme.colors.accent,
 )
+
+/**
+ * The two fields, on a raised card so they read as one object rather than two
+ * loose controls on a poster wall.
+ */
+@Composable
+private fun SignInCard(
+    state: LoginUiState,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onCancel: (() -> Unit)?,
+) {
+    val colors = MaurimaxTheme.colors
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        modifier = Modifier
+            .widthIn(max = 420.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Corners.card))
+            .background(colors.surface.copy(alpha = 0.96f))
+            .border(1.dp, colors.outline, RoundedCornerShape(Corners.card))
+            .padding(Spacing.lg),
+    ) {
+        OutlinedTextField(
+            value = state.username,
+            onValueChange = onUsernameChange,
+            label = { Text(stringResource(R.string.auth_username)) },
+            singleLine = true,
+            enabled = !state.signingIn,
+            shape = RoundedCornerShape(Corners.control),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next,
+            ),
+            colors = fieldColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        OutlinedTextField(
+            value = state.password,
+            onValueChange = onPasswordChange,
+            label = { Text(stringResource(R.string.auth_password)) },
+            singleLine = true,
+            enabled = !state.signingIn,
+            shape = RoundedCornerShape(Corners.control),
+            visualTransformation = if (passwordVisible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            trailingIcon = {
+                TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Text(
+                        text = stringResource(
+                            if (passwordVisible) R.string.auth_hide else R.string.auth_show,
+                        ),
+                        color = colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                }
+            },
+            colors = fieldColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        state.error?.let { failure ->
+            ErrorNote(failure)
+        }
+
+        Button(
+            onClick = onSubmit,
+            enabled = state.canSubmit,
+            shape = RoundedCornerShape(Corners.control),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.accent,
+                contentColor = colors.onAccent,
+                disabledContainerColor = colors.surfaceRaised,
+                disabledContentColor = colors.textTertiary,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            if (state.signingIn) {
+                CircularProgressIndicator(
+                    color = colors.onAccent,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.auth_sign_in),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                )
+            }
+        }
+    }
+
+    // Only when there is a list to go back to.
+    if (onCancel != null) {
+        TextButton(onClick = onCancel, modifier = Modifier.padding(top = Spacing.sm)) {
+            Text(
+                text = stringResource(R.string.accounts_cancel),
+                color = MaurimaxTheme.colors.textSecondary,
+                fontSize = 14.sp,
+            )
+        }
+    }
+}

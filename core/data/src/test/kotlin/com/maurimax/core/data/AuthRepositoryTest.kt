@@ -89,12 +89,15 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `signing out clears stored credentials`() = runTest {
+    fun `signing out ends the session but keeps the account`() = runTest {
         val store = InMemoryCredentialStore(Credentials("bob", "hunter2"))
         val auth = AuthRepository(FakeApi(), store)
 
         auth.signOut()
 
         assertNull(store.load())
+        // Signing out is usually a switch between a household's lines, not a
+        // goodbye, so the password stays and the picker can offer it back.
+        assertEquals(listOf(Credentials("bob", "hunter2")), auth.savedAccounts())
     }
 }

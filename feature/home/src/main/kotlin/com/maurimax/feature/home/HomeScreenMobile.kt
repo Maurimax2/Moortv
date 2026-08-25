@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,8 @@ import com.maurimax.core.model.MediaItem
 fun HomeScreenMobile(
     viewModel: HomeViewModel,
     onItemClick: (MediaItem) -> Unit = {},
+    account: String = "",
+    onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -67,6 +72,8 @@ fun HomeScreenMobile(
         onQueryChange = viewModel::onQueryChange,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
+        account = account,
+        onSwitchAccount = onSwitchAccount,
         modifier = modifier,
     )
 }
@@ -78,6 +85,8 @@ fun HomeScreenMobile(
     onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
+    account: String = "",
+    onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -91,6 +100,8 @@ fun HomeScreenMobile(
                 query = state.query,
                 onTabSelect = onTabSelect,
                 onQueryChange = onQueryChange,
+                account = account,
+                onSwitchAccount = onSwitchAccount,
             )
 
             Box(modifier = Modifier.weight(1f)) {
@@ -133,17 +144,29 @@ private fun Masthead(
     query: String,
     onTabSelect: (CatalogTab) -> Unit,
     onQueryChange: (String) -> Unit,
+    account: String,
+    onSwitchAccount: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .background(MaurimaxTheme.colors.ground)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
     ) {
-        BrandLockup(
-            fontSize = 18.sp,
-            markHeight = 26.dp,
-            modifier = Modifier.padding(start = Spacing.md, top = Spacing.md, bottom = Spacing.sm),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.sm),
+        ) {
+            BrandLockup(fontSize = 18.sp, markHeight = 26.dp, modifier = Modifier.weight(1f))
+
+            // The line in use, and the way back to the others. A household with
+            // two subscriptions needs this where it can be seen, not buried in
+            // a settings page nobody opens.
+            if (account.isNotBlank()) {
+                AccountChip(username = account, onClick = onSwitchAccount)
+            }
+        }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -441,3 +464,30 @@ private fun failureMessage(failure: PortalFailure): String =
     } else {
         stringResource(failure.messageRes)
     }
+
+/**
+ * Who is signed in, as a tappable disc.
+ *
+ * A letter rather than an avatar because the panel serves no picture, and a row
+ * of identical generic icons would say less than the first letter of the line.
+ */
+@Composable
+private fun AccountChip(username: String, onClick: () -> Unit) {
+    val colors = MaurimaxTheme.colors
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(50))
+            .background(colors.identity)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = username },
+    ) {
+        Text(
+            text = username.take(1).uppercase(),
+            color = colors.textPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Black,
+        )
+    }
+}

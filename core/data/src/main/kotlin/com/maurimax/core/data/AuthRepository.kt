@@ -21,6 +21,9 @@ class AuthRepository(
 
     fun savedCredentials(): Credentials? = credentialStore.load()
 
+    /** Every account saved on this device, most recently used first. */
+    fun savedAccounts(): List<Credentials> = credentialStore.all()
+
     suspend fun signIn(username: String, password: String, remember: Boolean = true): LoginResult {
         val response = try {
             api.login(username, password)
@@ -53,5 +56,9 @@ class AuthRepository(
         return LoginResult.Success(account)
     }
 
+    /**
+     * Signs out without forgetting. The account stays in the list so the
+     * customer can hop back to it, or to another line, without typing.
+     */
     fun signOut() = credentialStore.clear()
 }

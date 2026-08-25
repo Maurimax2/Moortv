@@ -10,7 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.maurimax.core.data.Library
+import com.maurimax.core.data.Graph
 import com.maurimax.core.data.SavedItem
 import com.maurimax.core.model.MediaItem
 
@@ -36,7 +36,7 @@ class PlayerActivity : ComponentActivity() {
         val startAt = if (isLive || itemId.isBlank()) {
             0L
         } else {
-            Library.resumePosition(this, itemId)
+            Graph.resumePosition(itemId)
         }
 
         // A phone plays video landscape; a TV is already landscape and must not
@@ -66,9 +66,8 @@ class PlayerActivity : ComponentActivity() {
                     // preference write per second would be wasteful and adds
                     // nothing, since only the last position matters.
                     if (!isLive && itemId.isNotBlank()) {
-                        Library.recordProgress(
-                            context = this,
-                            item = SavedItem(
+                        Graph.recordProgress(
+                            SavedItem(
                                 id = itemId,
                                 title = title,
                                 kind = kind.ifBlank { "MOVIE" },
