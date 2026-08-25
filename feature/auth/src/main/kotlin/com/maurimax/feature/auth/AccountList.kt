@@ -8,13 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,10 +25,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maurimax.core.data.PortalFailure
-import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.Credentials
@@ -42,8 +41,8 @@ import com.maurimax.core.model.Credentials
  * paper to switch simply does not switch. So the password is never asked for
  * twice — picking a row signs straight in.
  *
- * Removing is deliberately quiet: it needs a second tap to confirm, because a
- * mis-tap here means finding that slip of paper after all.
+ * Removing needs a second tap to confirm, because a mis-tap here means finding
+ * that slip of paper after all.
  */
 @Composable
 fun AccountList(
@@ -60,34 +59,20 @@ fun AccountList(
 
     Column(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-        modifier = modifier
-            .widthIn(max = 420.dp)
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Text(
             text = stringResource(R.string.accounts_title),
+            style = MaterialTheme.typography.headlineMedium,
             color = colors.textPrimary,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Black,
-        )
-        Text(
-            text = stringResource(R.string.accounts_subtitle),
-            color = colors.textSecondary,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = Spacing.sm),
         )
 
         error?.let { failure ->
             Text(
                 text = failure.message(),
+                style = MaterialTheme.typography.bodyMedium,
                 color = colors.accentText,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(Corners.tile))
-                    .background(colors.surfaceRaised)
-                    .padding(Spacing.md),
+                modifier = Modifier.padding(bottom = Spacing.xs),
             )
         }
 
@@ -96,7 +81,10 @@ fun AccountList(
                 account = account,
                 busy = signingIn,
                 confirmingRemoval = confirming == account.username,
-                onUse = { if (!signingIn) onUse(account) },
+                onUse = {
+                    confirming = null
+                    if (!signingIn) onUse(account)
+                },
                 onAskRemove = { confirming = account.username },
                 onCancelRemove = { confirming = null },
                 onConfirmRemove = {
@@ -106,14 +94,16 @@ fun AccountList(
             )
         }
 
-        TextButton(onClick = onAdd, modifier = Modifier.padding(top = Spacing.sm)) {
-            Text(
-                text = "+  " + stringResource(R.string.accounts_add),
-                color = colors.accentText,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        Text(
+            text = stringResource(R.string.accounts_add),
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.textSecondary,
+            modifier = Modifier
+                .padding(top = Spacing.xs)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onAdd)
+                .padding(vertical = Spacing.sm),
+        )
     }
 }
 
@@ -132,9 +122,9 @@ private fun AccountRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Corners.card))
-            .background(colors.surface.copy(alpha = 0.96f))
-            .border(1.dp, colors.outline, RoundedCornerShape(Corners.card)),
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .border(1.dp, colors.outline, RoundedCornerShape(12.dp)),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -142,59 +132,57 @@ private fun AccountRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(enabled = !busy, onClick = onUse)
-                .padding(Spacing.md),
+                .padding(horizontal = Spacing.md, vertical = 14.dp),
         ) {
             Initial(account.username)
 
             Text(
                 text = account.username,
+                style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
 
-            if (busy) {
-                CircularProgressIndicator(
-                    color = colors.accent,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp),
-                )
-            } else {
-                TextButton(onClick = onAskRemove) {
-                    Text(
-                        text = stringResource(R.string.accounts_remove),
-                        color = colors.textTertiary,
-                        fontSize = 13.sp,
-                    )
-                }
-            }
+            Text(
+                text = stringResource(R.string.accounts_remove),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.textTertiary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onAskRemove)
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+            )
         }
 
         if (confirmingRemoval) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                modifier = Modifier.padding(
+                    start = Spacing.md,
+                    end = Spacing.md,
+                    bottom = Spacing.md,
+                ),
             ) {
                 Text(
                     text = stringResource(R.string.accounts_remove_confirm, account.username),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = onCancelRemove) {
-                    Text(stringResource(R.string.accounts_cancel), color = colors.textSecondary, fontSize = 13.sp)
-                }
-                TextButton(onClick = onConfirmRemove) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    Text(
+                        text = stringResource(R.string.accounts_cancel),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.textSecondary,
+                        modifier = Modifier.clickable(onClick = onCancelRemove),
+                    )
                     Text(
                         text = stringResource(R.string.accounts_remove),
+                        style = MaterialTheme.typography.labelMedium,
                         color = colors.accentText,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        modifier = Modifier.clickable(onClick = onConfirmRemove),
                     )
                 }
             }
@@ -203,12 +191,14 @@ private fun AccountRow(
 }
 
 /**
- * A username in a violet disc. There are no avatars to show — the panel serves
- * none — and a row of identical generic icons is worse than a letter that at
- * least differs between lines.
+ * A username in a violet disc.
+ *
+ * The panel serves no avatars, and a row of identical generic icons says less
+ * than the first letter of the line it belongs to. This is the one place in the
+ * interface the brand violet appears as a fill.
  */
 @Composable
-internal fun Initial(username: String, size: androidx.compose.ui.unit.Dp = 40.dp) {
+internal fun Initial(username: String, size: Dp = 38.dp) {
     val colors = MaurimaxTheme.colors
     Box(
         contentAlignment = Alignment.Center,
