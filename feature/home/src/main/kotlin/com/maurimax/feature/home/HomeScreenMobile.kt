@@ -6,11 +6,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,47 +20,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.maurimax.core.designsystem.Artwork
-import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.messageRes
-import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
-import com.maurimax.core.designsystem.BrandLockup
+import com.maurimax.core.designsystem.R as DS
 import com.maurimax.core.designsystem.Spacing
-import com.maurimax.core.designsystem.badgeRes
 import com.maurimax.core.model.CatalogTab
-import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 
@@ -73,7 +65,6 @@ fun HomeScreenMobile(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     HomeScreenMobile(
         state = state,
-        onTabSelect = viewModel::selectTab,
         onQueryChange = viewModel::onQueryChange,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
@@ -83,10 +74,17 @@ fun HomeScreenMobile(
     )
 }
 
+/**
+ * The catalogue.
+ *
+ * One scrolling surface: the artwork runs under the top bar and under the
+ * navigation, both of which sit on gradients rather than filled bars, so the
+ * screen reads as a single page rather than a strip of chrome above a list and
+ * another below it.
+ */
 @Composable
 fun HomeScreenMobile(
     state: HomeUiState,
-    onTabSelect: (CatalogTab) -> Unit = {},
     onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
@@ -94,508 +92,328 @@ fun HomeScreenMobile(
     onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaurimaxTheme.colors
+    var searching by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaurimaxTheme.colors.ground),
+            .background(colors.ground),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Masthead(
-                tab = state.tab,
-                query = state.query,
-                onTabSelect = onTabSelect,
-                onQueryChange = onQueryChange,
-                account = account,
-                onSwitchAccount = onSwitchAccount,
-            )
+        when {
+            state.loading -> LoadingCatalogue(state.tab)
 
-            Box(modifier = Modifier.weight(1f)) {
-                when {
-                    state.loading -> CircularProgressIndicator(
-                        color = MaurimaxTheme.colors.accent,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
+            state.failure != null && state.rows.isEmpty() ->
+                Failure(state.failure, state.playableDownloads, onRetry, onItemClick)
 
-                    state.failure != null -> OfflinePanel(
-                        failure = state.failure,
-                        downloads = state.playableDownloads,
-                        onRetry = onRetry,
-                        onItemClick = onItemClick,
-                    )
+            state.isEmpty -> EmptySection(state.tab)
 
-                    state.noResults -> Text(
-                        text = stringResource(R.string.search_no_results, state.query),
-                        color = MaurimaxTheme.colors.textSecondary,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(Spacing.lg),
-                    )
-
-                    state.isEmpty -> Text(
-                        text = stringResource(
-                            if (state.tab == CatalogTab.SPORTS) {
-                                R.string.sports_empty
-                            } else {
-                                R.string.home_empty
-                            },
-                        ),
-                        color = MaurimaxTheme.colors.textSecondary,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                    else -> Catalog(state = state, onItemClick = onItemClick)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Masthead(
-    tab: CatalogTab,
-    query: String,
-    onTabSelect: (CatalogTab) -> Unit,
-    onQueryChange: (String) -> Unit,
-    account: String,
-    onSwitchAccount: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .background(MaurimaxTheme.colors.ground)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.sm),
-        ) {
-            BrandLockup(fontSize = 18.sp, markHeight = 26.dp, modifier = Modifier.weight(1f))
-
-            // The line in use, and the way back to the others. A household with
-            // two subscriptions needs this where it can be seen, not buried in
-            // a settings page nobody opens.
-            if (account.isNotBlank()) {
-                AccountChip(username = account, onClick = onSwitchAccount)
-            }
+            else -> Catalogue(state = state, onItemClick = onItemClick)
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
-            modifier = Modifier.padding(horizontal = Spacing.md),
-        ) {
-            CatalogTab.entries.forEach { entry ->
-                TabLabel(
-                    label = stringResource(entry.labelRes),
-                    selected = entry == tab,
-                    onClick = { onTabSelect(entry) },
-                )
-            }
-        }
-
-        SearchField(
-            query = query,
-            onQueryChange = onQueryChange,
-            modifier = Modifier.padding(
-                start = Spacing.md,
-                end = Spacing.md,
-                top = Spacing.sm,
-                bottom = Spacing.sm,
-            ),
-        )
-    }
-}
-
-/** Filters the section already on screen, so results appear as you type. */
-@Composable
-private fun SearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaurimaxTheme.colors
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Corners.control))
-            .background(colors.surfaceRaised)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-    ) {
-        BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            singleLine = true,
-            textStyle = LocalTextStyle.current.copy(color = colors.textPrimary, fontSize = 15.sp),
-            cursorBrush = SolidColor(colors.accent),
-            decorationBox = { inner ->
-                if (query.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.search_hint),
-                        color = colors.textTertiary,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                inner()
+        TopBar(
+            query = state.query,
+            searching = searching,
+            onSearchToggle = {
+                searching = !searching
+                if (!searching) onQueryChange("")
             },
-            modifier = Modifier.weight(1f),
+            onQueryChange = onQueryChange,
+            account = account,
+            onAccountClick = onSwitchAccount,
+            modifier = Modifier.align(Alignment.TopCenter),
         )
-
-        if (query.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.search_clear),
-                color = colors.accentText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clickable { onQueryChange("") }
-                    .padding(start = Spacing.sm),
-            )
-        }
-    }
-}
-
-/**
- * An underline rather than a filled pill: the accent is spent on one thing at a
- * time, and artwork is what should carry colour on this screen.
- */
-@Composable
-private fun TabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(bottom = Spacing.xs),
-    ) {
-        Text(
-            text = label,
-            color = if (selected) MaurimaxTheme.colors.textPrimary else MaurimaxTheme.colors.textTertiary,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(vertical = Spacing.sm),
-        )
-        AnimatedVisibility(visible = selected, enter = fadeIn(), exit = fadeOut()) {
-            Box(
-                modifier = Modifier
-                    .height(2.dp)
-                    .width(24.dp)
-                    .background(MaurimaxTheme.colors.accent, RoundedCornerShape(2.dp)),
-            )
-        }
     }
 }
 
 @Composable
-private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
+private fun Catalogue(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
+    val rows = state.railsFor()
+    val hero = if (state.query.isBlank()) state.heroItem() else null
+
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         contentPadding = PaddingValues(
-            top = Spacing.sm,
-            bottom = Spacing.xl + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            // Rails clear the navigation; the hero deliberately does not clear
+            // the top bar, which floats over its artwork.
+            bottom = 96.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        // Only when nothing is being searched: during a search the answer is
-        // the results, not a recommendation.
-        val featured = if (state.query.isBlank() && state.tab != CatalogTab.SPORTS) {
-            state.visibleRows.firstOrNull()?.items?.firstOrNull()
+        if (hero != null) {
+            item(key = "hero") {
+                Hero(item = hero, onPlay = onItemClick, onOpen = onItemClick)
+            }
         } else {
-            null
-        }
-
-        // Football gets artwork of its own rather than a channel logo blown up:
-        // a live rail's key art is a small mark on black, which makes a poor
-        // hero however large you print it.
-        if (state.tab == CatalogTab.SPORTS && state.query.isBlank()) {
-            item(key = "sports-band") {
-                SportsBand(
-                    modifier = Modifier.padding(
-                        start = Spacing.md,
-                        end = Spacing.md,
-                        bottom = Spacing.sm,
+            item(key = "top-space") {
+                Spacer(
+                    Modifier.height(
+                        WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp,
                     ),
                 )
             }
         }
 
-        featured?.let { hero ->
-            item(key = "hero-${hero.id}") {
-                HeroBanner(
-                    item = hero,
-                    onPlay = onItemClick,
-                    onOpen = onItemClick,
-                    modifier = Modifier.padding(bottom = Spacing.sm),
+        itemsIndexed(rows, key = { index, row -> "$index-${row.title}" }) { _, row ->
+            Rail(row = row, onItemClick = onItemClick)
+        }
+
+        if (state.noResults) {
+            item(key = "no-results") {
+                Text(
+                    text = stringResource(R.string.search_no_results, state.query),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaurimaxTheme.colors.textSecondary,
+                    modifier = Modifier.padding(Spacing.lg),
                 )
             }
-        }
-
-        if (state.query.isBlank()) {
-            val (resume, favourites) = state.personalFor(state.tab)
-            val downloads = state.downloadsFor(state.tab)
-
-            // Downloads lead: a customer who went to the trouble of keeping
-            // something is more likely to be reaching for it than browsing.
-            if (downloads.isNotEmpty()) {
-                item(key = "row-downloads") {
-                    MobileRow(
-                        row = ContentRow(stringResource(R.string.row_downloads), downloads),
-                        tab = state.tab,
-                        onItemClick = onItemClick,
-                    )
-                }
-            }
-            if (resume.isNotEmpty()) {
-                item(key = "row-resume") {
-                    MobileRow(
-                        row = ContentRow(stringResource(R.string.row_continue_watching), resume),
-                        tab = state.tab,
-                        onItemClick = onItemClick,
-                    )
-                }
-            }
-            if (favourites.isNotEmpty()) {
-                item(key = "row-favourites") {
-                    MobileRow(
-                        row = ContentRow(stringResource(R.string.row_favourites), favourites),
-                        tab = state.tab,
-                        onItemClick = onItemClick,
-                    )
-                }
-            }
-        }
-
-        // Keyed by position as well as name: a panel is free to hand back two
-        // categories with the same title, and a duplicate key crashes the list.
-        itemsIndexed(state.visibleRows, key = { index, row -> "$index-${row.title}" }) { _, row ->
-            MobileRow(row = row, tab = state.tab, onItemClick = onItemClick)
         }
     }
 }
 
+/**
+ * The top bar.
+ *
+ * Nothing but the mark until it is needed: search expands in place rather than
+ * pushing the artwork down, because a permanent search field at the top of a
+ * catalogue is a field nobody uses taking the best space on the screen.
+ */
 @Composable
-private fun MobileRow(row: ContentRow, tab: CatalogTab, onItemClick: (MediaItem) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        // A panel can hand back a row with no name — a single catch-all
-        // category — and a blank header is worse than none.
-        if (row.title.isNotBlank()) {
+private fun TopBar(
+    query: String,
+    searching: Boolean,
+    onSearchToggle: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    account: String,
+    onAccountClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaurimaxTheme.colors
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                start = Spacing.md,
+                end = Spacing.md,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + Spacing.sm,
+                bottom = Spacing.sm,
+            ),
+    ) {
+        Image(
+            painter = painterResource(DS.drawable.ic_mark),
+            contentDescription = "MAURIMAX",
+            modifier = Modifier.height(28.dp),
+        )
+
+        AnimatedVisibility(
+            visible = searching,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.weight(1f),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                modifier = Modifier.padding(horizontal = Spacing.md),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.surface)
+                    .padding(horizontal = Spacing.md),
             ) {
-                // Recognised faster than the words beside it.
-                Sports.badge(row.title)?.let { league ->
-                    Image(
-                        painter = painterResource(league.badgeRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Text(
-                    text = row.title,
-                    color = MaurimaxTheme.colors.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(color = colors.textPrimary, fontSize = 14.sp),
+                    cursorBrush = SolidColor(colors.accent),
+                    decorationBox = { inner ->
+                        if (query.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.search_hint),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colors.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        inner()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            contentPadding = PaddingValues(horizontal = Spacing.md),
-        ) {
-            items(row.items, key = { it.id }) { item ->
-                MobileTile(item = item, tab = tab, onClick = { onItemClick(item) })
+
+        if (!searching) Spacer(Modifier.weight(1f))
+
+        Image(
+            painter = painterResource(DS.drawable.ic_search),
+            contentDescription = stringResource(R.string.search_hint),
+            colorFilter = ColorFilter.tint(colors.textPrimary),
+            modifier = Modifier
+                .size(22.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onSearchToggle,
+                ),
+        )
+
+        if (account.isNotBlank()) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(colors.identity)
+                    .clickable(onClick = onAccountClick),
+            ) {
+                Text(
+                    text = account.take(1).uppercase(),
+                    color = colors.textPrimary,
+                    fontSize = 13.sp,
+                )
             }
         }
     }
 }
 
+/** Shapes where the artwork will be, so nothing jumps when the rails land. */
 @Composable
-private fun MobileTile(item: MediaItem, tab: CatalogTab, onClick: () -> Unit) {
-    val portrait = tab.usesPortraitArt
-    val tileWidth = if (portrait) 112.dp else 132.dp
-    val tileHeight = if (portrait) 168.dp else 76.dp
-
+private fun LoadingCatalogue(tab: CatalogTab) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         modifier = Modifier
-            .width(tileWidth)
-            .clickable(onClick = onClick),
+            .fillMaxSize()
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp),
     ) {
         Box(
             modifier = Modifier
+                .padding(horizontal = Spacing.md)
                 .fillMaxWidth()
-                .height(tileHeight)
-                .clip(RoundedCornerShape(Corners.tile))
-                .background(MaurimaxTheme.colors.surfaceRaised),
-        ) {
-            Artwork(
-                url = item.artworkUrl,
-                title = item.title,
-                kind = if (portrait) ArtworkKind.POSTER else ArtworkKind.CHANNEL_LOGO,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-
-        if (item.progress > 0f) {
-            LinearProgressIndicator(
-                progress = { item.progress },
-                color = MaurimaxTheme.colors.accent,
-                trackColor = MaurimaxTheme.colors.outline,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-            )
-        }
-
-        Text(
-            text = item.title,
-            color = MaurimaxTheme.colors.textPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            lineHeight = 15.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+                .height(300.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaurimaxTheme.colors.surface),
         )
-        itemLabel(item)?.let { label ->
-            Text(
-                text = label,
-                color = MaurimaxTheme.colors.textTertiary,
-                fontSize = 11.sp,
-                maxLines = 1,
-            )
-        }
+        repeat(2) { RailSkeleton(portrait = tab.usesPortraitArt) }
     }
 }
 
 @Composable
-private fun ErrorPanel(
-    failure: PortalFailure,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        modifier = modifier.padding(Spacing.lg),
-    ) {
+private fun EmptySection(tab: CatalogTab) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = failureMessage(failure),
-            color = MaurimaxTheme.colors.textSecondary,
-            fontSize = 15.sp,
-        )
-        Button(
-            onClick = onRetry,
-            shape = RoundedCornerShape(Corners.control),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaurimaxTheme.colors.accent,
-                contentColor = MaurimaxTheme.colors.textPrimary,
+            text = stringResource(
+                if (tab == CatalogTab.SPORTS) R.string.sports_empty else R.string.home_empty,
             ),
-        ) {
-            Text(stringResource(R.string.home_retry), fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-/**
- * The caption under a tile: a rating when the panel supplies a real one.
- *
- * Panels send "0" for anything unrated, and printing "★ 0" on half a catalogue
- * makes every title look badly reviewed rather than simply unscored.
- */
-@Composable
-private fun itemLabel(item: MediaItem): String? {
-    val score = item.rating.trim().toDoubleOrNull()
-    if (score == null || score <= 0.0) return null
-    return "★ ${item.rating.trim()}"
-}
-
-/** The specific reason the catalogue could not load, in the customer's language. */
-@Composable
-private fun failureMessage(failure: PortalFailure): String =
-    if (failure is PortalFailure.Inactive) {
-        stringResource(failure.messageRes, failure.status)
-    } else {
-        stringResource(failure.messageRes)
-    }
-
-/**
- * Who is signed in, as a tappable disc.
- *
- * A letter rather than an avatar because the panel serves no picture, and a row
- * of identical generic icons would say less than the first letter of the line.
- */
-@Composable
-private fun AccountChip(username: String, onClick: () -> Unit) {
-    val colors = MaurimaxTheme.colors
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(50))
-            .background(colors.identity)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = username },
-    ) {
-        Text(
-            text = username.take(1).uppercase(),
-            color = colors.textPrimary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaurimaxTheme.colors.textSecondary,
+            modifier = Modifier.align(Alignment.Center).padding(Spacing.lg),
         )
     }
 }
 
 /**
- * What a failure looks like when there is something kept on the device.
+ * A failure with whatever is already on the device underneath it.
  *
- * A customer with no connection is exactly the customer who downloaded
- * something, and an error screen that hides it from them makes the whole
- * feature pointless. So the message stays, and the downloads sit under it.
+ * Being unable to reach the panel is exactly when a download earns its keep,
+ * so this screen leads to them rather than dead-ending.
  */
 @Composable
-private fun OfflinePanel(
+private fun Failure(
     failure: PortalFailure,
     downloads: List<MediaItem>,
     onRetry: () -> Unit,
     onItemClick: (MediaItem) -> Unit,
 ) {
-    if (downloads.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            ErrorPanel(
-                failure = failure,
-                onRetry = onRetry,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        }
-        return
-    }
+    val colors = MaurimaxTheme.colors
 
     Column(
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = Spacing.xl),
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp),
     ) {
-        ErrorPanel(
-            failure = failure,
-            onRetry = onRetry,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Text(
-            text = stringResource(R.string.downloads_offline),
-            color = MaurimaxTheme.colors.textSecondary,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = Spacing.md),
-        )
-        MobileRow(
-            row = ContentRow(stringResource(R.string.row_downloads), downloads),
-            tab = CatalogTab.MOVIES,
-            onItemClick = onItemClick,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg),
+        ) {
+            Text(
+                text = if (failure is PortalFailure.Inactive) {
+                    stringResource(failure.messageRes, failure.status)
+                } else {
+                    stringResource(failure.messageRes)
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textSecondary,
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.primaryFill)
+                    .clickable(onClick = onRetry)
+                    .padding(horizontal = Spacing.xl),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_retry),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onPrimaryFill,
+                )
+            }
+        }
+
+        if (downloads.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.downloads_offline),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textTertiary,
+                modifier = Modifier.padding(horizontal = Spacing.md),
+            )
+            Rail(
+                row = ContentRow(stringResource(R.string.row_downloads), downloads),
+                onItemClick = onItemClick,
+            )
+        }
     }
 }
+
+/**
+ * What this tab shows, in order.
+ *
+ * Kept titles first, then what was left unfinished, then what was starred,
+ * then the panel's own categories. Someone who downloaded a film or stopped
+ * halfway through one is reaching for it, not browsing — and during a search
+ * all of that is dropped, because the answer to a search is the results.
+ */
+@Composable
+private fun HomeUiState.railsFor(): List<ContentRow> {
+    val downloadsTitle = stringResource(R.string.row_downloads)
+    val resumeTitle = stringResource(R.string.row_continue_watching)
+    val favouritesTitle = stringResource(R.string.row_favourites)
+
+    return remember(tab, rows, resume, favourites, downloads, query) {
+        buildList {
+            if (query.isBlank()) {
+                val (unfinished, starred) = personalFor(tab)
+                val kept = downloadsFor(tab)
+                if (kept.isNotEmpty()) add(ContentRow(downloadsTitle, kept))
+                if (unfinished.isNotEmpty()) add(ContentRow(resumeTitle, unfinished))
+                if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
+            }
+            addAll(visibleRows)
+        }
+    }
+}
+
+/**
+ * The title the screen opens on.
+ *
+ * The first thing in the first catalogue rail rather than anything personal:
+ * the hero is the section introducing itself, and leading with something the
+ * customer has already watched makes the whole screen look like a history page.
+ */
+private fun HomeUiState.heroItem(): MediaItem? = visibleRows.firstOrNull()?.items?.firstOrNull()

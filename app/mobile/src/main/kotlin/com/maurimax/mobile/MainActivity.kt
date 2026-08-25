@@ -25,11 +25,19 @@ import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.MaurimaxMobileTheme
 import com.maurimax.feature.auth.LoginScreenMobile
 import com.maurimax.feature.auth.LoginViewModel
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.maurimax.core.model.CatalogTab
+import com.maurimax.feature.home.Destination
 import com.maurimax.feature.home.HomeScreenMobile
+import com.maurimax.feature.home.MaurimaxBottomBar
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.toMediaItem
 import com.maurimax.feature.home.DetailScreenMobile
 import com.maurimax.feature.home.HomeViewModel
+import com.maurimax.feature.home.ProfileScreen
 import com.maurimax.feature.player.PlayerActivity
 
 class MainActivity : ComponentActivity() {
@@ -143,24 +151,62 @@ private fun MaurimaxMobileApp(
                 },
             )
         } else {
-            HomeScreenMobile(
-                viewModel = homeViewModel,
-                account = credentials.username,
-                // Signing out keeps the account on the device, so this is a
-                // switch back to the list rather than a goodbye.
-                onSwitchAccount = loginViewModel::signOut,
-                // A channel plays straight away — nobody wants a page about a
-                // channel. Films and series open their own page first.
-                onItemClick = { item ->
-                    if (item.isLive) {
-                        play(item)
-                    } else {
-                        opened = item
-                        // A series has no episodes until they are asked for.
-                        homeViewModel.openSeries(item)
-                    }
-                },
-            )
+            // The navigation belongs to the shell rather than to any one
+            // screen, so it stays put while the page under it changes.
+            var destination by remember {
+                mutableStateOf<Destination>(Destination.Section(CatalogTab.LIVE))
+            }
+            if (destination is Destination.Profile) {
+                BackHandler { destination = Destination.Section(homeState.tab) }
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (destination is Destination.Profile) {
+                    ProfileScreen(
+                        username = credentials.username,
+                        downloads = homeState.playableDownloads.size,
+                        language = AppLocale.resolve(activity),
+                        onLanguageChange = { language ->
+                            AppLocale.set(activity, language)
+                            // Resources and layout direction are bound at
+                            // attachBaseContext, so the activity has to be
+                            // rebuilt for the switch to take hold.
+                            activity.recreate()
+                        },
+                        theme = theme,
+                        onThemeChange = onThemeChange,
+                        onSwitchAccount = loginViewModel::signOut,
+                    )
+                } else {
+                    HomeScreenMobile(
+                        viewModel = homeViewModel,
+                        account = credentials.username,
+                        // Signing out keeps the account on the device, so this
+                        // is a switch back to the list rather than a goodbye.
+                        onSwitchAccount = loginViewModel::signOut,
+                        // A channel plays straight away — nobody wants a page
+                        // about a channel. Films and series open theirs first.
+                        onItemClick = { item ->
+                            if (item.isLive) {
+                                play(item)
+                            } else {
+                                opened = item
+                                // A series has no episodes until asked for.
+                                homeViewModel.openSeries(item)
+                            }
+                        },
+                    )
+                }
+
+                MaurimaxBottomBar(
+                    current = destination,
+                    onSelect = { picked ->
+                        destination = picked
+                        if (picked is Destination.Section) homeViewModel.selectTab(picked.tab)
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         }
     } else {
         LoginScreenMobile(

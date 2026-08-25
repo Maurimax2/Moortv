@@ -2,6 +2,7 @@ package com.maurimax.core.designsystem
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +59,14 @@ fun Artwork(
     title: String,
     kind: ArtworkKind,
     modifier: Modifier = Modifier,
+    /**
+     * Bundled artwork to stand in when the panel has none or its image will
+     * not load. Films and series get one automatically, keyed off the title so
+     * the same film always falls back to the same poster; channels do not,
+     * because a film poster behind a news channel is a lie rather than a
+     * fallback.
+     */
+    fallback: Int? = defaultFallbackFor(kind, title),
 ) {
     var loaded by remember(url) { mutableStateOf(false) }
     var failed by remember(url) { mutableStateOf(false) }
@@ -77,8 +87,20 @@ fun Artwork(
     )
 
     Box(modifier = modifier.background(plate)) {
+        // Bundled art sits under everything: it fills the frame the moment the
+        // screen draws, and whatever the panel sends fades in over it. A tile
+        // is never an empty rectangle, even offline.
+        if (fallback != null && (!loaded || failed)) {
+            Image(
+                painter = painterResource(fallback),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
         // The name shows until artwork arrives, and stays if none ever does.
-        if (!loaded || failed) {
+        if ((!loaded || failed) && fallback == null) {
             BasicText(
                 text = title,
                 style = TextStyle(
@@ -130,4 +152,16 @@ private fun fallbackSizeFor(title: String): TextUnit = when {
     title.length > 28 -> 11.sp
     title.length > 16 -> 12.sp
     else -> 13.sp
+}
+
+/**
+ * Which bundled poster stands in for a title.
+ *
+ * Keyed off the name rather than picked at random, so a film keeps the same
+ * stand-in every time it is drawn — a tile that changes artwork between scrolls
+ * looks broken.
+ */
+private fun defaultFallbackFor(kind: ArtworkKind, title: String): Int? = when (kind) {
+    ArtworkKind.CHANNEL_LOGO -> null
+    ArtworkKind.POSTER -> if (title.isBlank()) null else Showcase.pick(Showcase.all, title).poster
 }

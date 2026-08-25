@@ -15,6 +15,19 @@
 
 
     <string name="action_play">تشغيل</string>
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_movies">أفلام</string>
+    <string name="nav_series">مسلسلات</string>
+    <string name="nav_sports">الرياضة</string>
+    <string name="nav_profile">حسابي</string>
+    <!-- %1$d is how many titles are kept on the device. -->
+    <string name="profile_downloads">%1$d عنوان محفوظ على الجهاز</string>
+    <string name="profile_language">اللغة</string>
+    <string name="profile_appearance">المظهر</string>
+    <string name="profile_switch_account">تبديل الاشتراك</string>
+    <string name="profile_theme_dark">داكن</string>
+    <string name="profile_theme_light">فاتح</string>
+    <string name="action_my_list">قائمتي</string>
     <string name="action_resume">متابعة</string>
     <string name="action_back">رجوع</string>
     <string name="detail_episodes">الحلقات</string>

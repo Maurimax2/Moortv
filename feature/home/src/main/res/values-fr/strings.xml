@@ -15,6 +15,19 @@
 
 
     <string name="action_play">Lecture</string>
+    <string name="nav_home">Accueil</string>
+    <string name="nav_movies">Films</string>
+    <string name="nav_series">Séries</string>
+    <string name="nav_sports">Sport</string>
+    <string name="nav_profile">Compte</string>
+    <!-- %1$d is how many titles are kept on the device. -->
+    <string name="profile_downloads">%1$d titre(s) sur cet appareil</string>
+    <string name="profile_language">Langue</string>
+    <string name="profile_appearance">Apparence</string>
+    <string name="profile_switch_account">Changer d\'abonnement</string>
+    <string name="profile_theme_dark">Sombre</string>
+    <string name="profile_theme_light">Clair</string>
+    <string name="action_my_list">Ma liste</string>
     <string name="action_resume">Reprendre</string>
     <string name="action_back">Retour</string>
     <string name="detail_episodes">Épisodes</string>
