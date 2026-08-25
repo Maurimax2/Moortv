@@ -111,10 +111,11 @@ fun HomeScreenMobile(
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                    state.failure != null -> ErrorPanel(
+                    state.failure != null -> OfflinePanel(
                         failure = state.failure,
+                        downloads = state.playableDownloads,
                         onRetry = onRetry,
-                        modifier = Modifier.align(Alignment.Center),
+                        onItemClick = onItemClick,
                     )
 
                     state.noResults -> Text(
@@ -305,7 +306,19 @@ private fun Catalog(state: HomeUiState, onItemClick: (MediaItem) -> Unit) {
 
         if (state.query.isBlank()) {
             val (resume, favourites) = state.personalFor(state.tab)
+            val downloads = state.downloadsFor(state.tab)
 
+            // Downloads lead: a customer who went to the trouble of keeping
+            // something is more likely to be reaching for it than browsing.
+            if (downloads.isNotEmpty()) {
+                item(key = "row-downloads") {
+                    MobileRow(
+                        row = ContentRow(stringResource(R.string.row_downloads), downloads),
+                        tab = state.tab,
+                        onItemClick = onItemClick,
+                    )
+                }
+            }
             if (resume.isNotEmpty()) {
                 item(key = "row-resume") {
                     MobileRow(
@@ -488,6 +501,56 @@ private fun AccountChip(username: String, onClick: () -> Unit) {
             color = colors.textPrimary,
             fontSize = 15.sp,
             fontWeight = FontWeight.Black,
+        )
+    }
+}
+
+/**
+ * What a failure looks like when there is something kept on the device.
+ *
+ * A customer with no connection is exactly the customer who downloaded
+ * something, and an error screen that hides it from them makes the whole
+ * feature pointless. So the message stays, and the downloads sit under it.
+ */
+@Composable
+private fun OfflinePanel(
+    failure: PortalFailure,
+    downloads: List<MediaItem>,
+    onRetry: () -> Unit,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    if (downloads.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ErrorPanel(
+                failure = failure,
+                onRetry = onRetry,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+        return
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = Spacing.xl),
+    ) {
+        ErrorPanel(
+            failure = failure,
+            onRetry = onRetry,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Text(
+            text = stringResource(R.string.downloads_offline),
+            color = MaurimaxTheme.colors.textSecondary,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = Spacing.md),
+        )
+        MobileRow(
+            row = ContentRow(stringResource(R.string.row_downloads), downloads),
+            tab = CatalogTab.MOVIES,
+            onItemClick = onItemClick,
         )
     }
 }

@@ -88,6 +88,10 @@ private fun MaurimaxTvApp(
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
 
+        // Observed rather than read once: a download's progress has to reach
+        // the page it is showing on.
+        val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+
         val play: (MediaItem) -> Unit = { item ->
             if (item.isPlayable) {
                 activity.startActivity(PlayerActivity.intent(activity, item))
@@ -102,6 +106,10 @@ private fun MaurimaxTvApp(
                 onPlay = play,
                 isFavourite = homeViewModel.isFavourite(chosen),
                 onToggleFavourite = { homeViewModel.toggleFavourite(chosen) },
+                download = homeState.downloads.firstOrNull { it.item.id == chosen.id },
+                onDownload = { homeViewModel.download(chosen) },
+                onRemoveDownload = { homeViewModel.removeDownload(chosen) },
+                onRefresh = homeViewModel::refreshLibrary,
                 onBack = { opened = null },
             )
         } else {

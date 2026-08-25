@@ -2,6 +2,14 @@
 <resources>
     <string name="row_continue_watching">متابعة المشاهدة</string>
     <string name="row_favourites">المفضلة</string>
+    <string name="row_downloads">التنزيلات</string>
+    <string name="action_download">تنزيل</string>
+    <!-- %1$d is a percentage, 0-100. -->
+    <string name="action_downloading">جارٍ التنزيل %1$d%%</string>
+    <string name="action_downloaded">محفوظ على الجهاز</string>
+    <string name="action_download_remove">حذف التنزيل</string>
+    <string name="action_download_failed">فشل التنزيل. أعد المحاولة.</string>
+    <string name="downloads_offline">لا يوجد اتصال، لكن هذه العناوين محفوظة على جهازك.</string>
     <string name="action_favourite_add">أضف إلى المفضلة</string>
     <string name="action_favourite_remove">إزالة من المفضلة</string>
 

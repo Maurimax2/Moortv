@@ -25,12 +25,16 @@ class PlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val url = intent.getStringExtra(EXTRA_URL).orEmpty()
+        val streamUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val isLive = intent.getBooleanExtra(EXTRA_LIVE, false)
         val itemId = intent.getStringExtra(EXTRA_ID).orEmpty()
         val artwork = intent.getStringExtra(EXTRA_ARTWORK).orEmpty()
         val kind = intent.getStringExtra(EXTRA_KIND).orEmpty()
+
+        // A downloaded copy wins over the panel: it plays instantly, costs no
+        // data, and keeps working when the connection does not.
+        val url = Graph.localUrl(itemId) ?: streamUrl
 
         // Where this customer got to last time. Live has no meaningful position.
         val startAt = if (isLive || itemId.isBlank()) {
@@ -72,7 +76,7 @@ class PlayerActivity : ComponentActivity() {
                                 title = title,
                                 kind = kind.ifBlank { "MOVIE" },
                                 artworkUrl = artwork,
-                                playbackUrl = url,
+                                playbackUrl = streamUrl,
                                 positionMs = position,
                                 durationMs = duration,
                             ),

@@ -133,10 +133,11 @@ fun HomeScreenTv(
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                    state.failure != null -> TvErrorPanel(
+                    state.failure != null -> TvOfflinePanel(
                         failure = state.failure,
+                        downloads = state.playableDownloads,
                         onRetry = onRetry,
-                        modifier = Modifier.align(Alignment.Center),
+                        onItemClick = onItemClick,
                     )
 
                     rows.isEmpty() -> Text(
@@ -526,14 +527,62 @@ private fun TvErrorPanel(
 private fun HomeUiState.tvRows(): List<ContentRow> {
     val resumeTitle = stringResource(R.string.row_continue_watching)
     val favouritesTitle = stringResource(R.string.row_favourites)
-    return remember(tab, rows, resume, favourites, query, resumeTitle, favouritesTitle) {
+    val downloadsTitle = stringResource(R.string.row_downloads)
+    return remember(tab, rows, resume, favourites, downloads, query) {
         buildList {
             if (query.isBlank()) {
                 val (unfinished, starred) = personalFor(tab)
+                val kept = downloadsFor(tab)
+                if (kept.isNotEmpty()) add(ContentRow(downloadsTitle, kept))
                 if (unfinished.isNotEmpty()) add(ContentRow(resumeTitle, unfinished))
                 if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
             }
             addAll(visibleRows)
         }
+    }
+}
+
+/**
+ * A failure, with whatever is already on the box underneath it.
+ *
+ * The moment the panel is unreachable is the moment a download earns its
+ * keep, so this screen has to lead to them rather than dead-end.
+ */
+@Composable
+private fun TvOfflinePanel(
+    failure: PortalFailure,
+    downloads: List<MediaItem>,
+    onRetry: () -> Unit,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    if (downloads.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            TvErrorPanel(
+                failure = failure,
+                onRetry = onRetry,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+        return
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = Spacing.tvOverscan, vertical = Spacing.lg),
+    ) {
+        TvErrorPanel(failure = failure, onRetry = onRetry)
+        Text(
+            text = stringResource(R.string.downloads_offline),
+            color = MaurimaxTheme.colors.textSecondary,
+            fontSize = 16.sp,
+        )
+        TvRow(
+            row = ContentRow(stringResource(R.string.row_downloads), downloads),
+            firstCard = null,
+            onFocus = {},
+            onItemClick = onItemClick,
+        )
     }
 }

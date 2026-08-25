@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.maurimax.core.data.ContentRepository
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.data.Graph
 import com.maurimax.core.data.SavedItem
 import com.maurimax.core.data.toSavedItem
@@ -33,7 +35,13 @@ data class HomeUiState(
     val resume: List<MediaItem> = emptyList(),
     /** Titles the customer starred. */
     val favourites: List<MediaItem> = emptyList(),
+    /** Titles kept on the device, finished or still arriving. */
+    val downloads: List<Download> = emptyList(),
 ) {
+
+    /** Downloads that have actually landed and will play right now. */
+    val playableDownloads: List<MediaItem>
+        get() = downloads.filter { it.state == DownloadState.DONE }.map { it.item }
 
     /**
      * What the catalogue shows right now.
@@ -67,6 +75,20 @@ data class HomeUiState(
         val resumable = if (tab == CatalogTab.LIVE) emptyList() else resume.filter(::matches)
         return resumable to favourites.filter(::matches)
     }
+
+    /** Kept titles belonging to this tab. Never live: a channel has no file. */
+    fun downloadsFor(tab: CatalogTab): List<MediaItem> =
+        if (tab == CatalogTab.LIVE) {
+            emptyList()
+        } else {
+            playableDownloads.filter {
+                when (tab) {
+                    CatalogTab.MOVIES -> it.kind == MediaKind.MOVIE
+                    CatalogTab.SERIES -> it.kind == MediaKind.SERIES
+                    CatalogTab.LIVE -> false
+                }
+            }
+        }
 
     val noResults: Boolean get() = query.isNotBlank() && visibleRows.isEmpty() && !loading
     val isEmpty: Boolean get() = !loading && failure == null && rows.isEmpty()
@@ -131,6 +153,7 @@ class HomeViewModel(
             it.copy(
                 resume = Graph.continueWatching().map(SavedItem::toMediaItem),
                 favourites = Graph.favourites().map(SavedItem::toMediaItem),
+                downloads = Graph.downloads(),
             )
         }
     }
@@ -142,6 +165,18 @@ class HomeViewModel(
     }
 
     fun isFavourite(item: MediaItem): Boolean = Graph.isFavourite(item.id)
+
+    // ---- downloads --------------------------------------------------------
+
+    fun download(item: MediaItem) {
+        Graph.startDownload(item)
+        refreshLibrary()
+    }
+
+    fun removeDownload(item: MediaItem) {
+        Graph.removeDownload(item.id)
+        refreshLibrary()
+    }
 
     fun removeFromResume(item: MediaItem) {
         Graph.forgetProgress(item.id)

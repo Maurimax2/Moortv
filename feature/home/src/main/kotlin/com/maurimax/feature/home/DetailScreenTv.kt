@@ -37,7 +37,11 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Text
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Brand
 import com.maurimax.core.designsystem.Corners
@@ -45,6 +49,7 @@ import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Scrims
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.MediaItem
+import kotlinx.coroutines.delay
 
 /**
  * A title's own page on TV.
@@ -59,6 +64,10 @@ fun DetailScreenTv(
     onPlay: (MediaItem) -> Unit,
     isFavourite: Boolean = false,
     onToggleFavourite: () -> Unit = {},
+    download: Download? = null,
+    onDownload: () -> Unit = {},
+    onRemoveDownload: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -71,6 +80,18 @@ fun DetailScreenTv(
     // Play is where the remote should already be. Anything else makes the
     // customer travel across the page to do the only thing they came for.
     LaunchedEffect(item.id) { runCatching { playButton.requestFocus() } }
+
+    // The system downloader reports progress only when asked, so while
+    // something is arriving this page asks — and stops the moment it lands.
+    val inFlight = download != null &&
+        download.state != DownloadState.DONE &&
+        download.state != DownloadState.FAILED
+    LaunchedEffect(inFlight) {
+        while (inFlight) {
+            delay(1_500)
+            onRefresh()
+        }
+    }
 
     Box(
         modifier = modifier
@@ -149,6 +170,23 @@ fun DetailScreenTv(
                             onToggleFavourite()
                         },
                     )
+                    // Live has no file to keep, only a stream that never ends.
+                    if (!item.isLive) {
+                        TvAction(
+                            label = when {
+                                download?.state == DownloadState.DONE ->
+                                    "✓  " + stringResource(R.string.action_downloaded)
+                                download?.state == DownloadState.FAILED ->
+                                    stringResource(R.string.action_download_failed)
+                                download != null -> stringResource(
+                                    R.string.action_downloading,
+                                    (download.progress * 100).toInt(),
+                                )
+                                else -> "↓  " + stringResource(R.string.action_download)
+                            },
+                            onClick = { if (download == null) onDownload() else onRemoveDownload() },
+                        )
+                    }
                 } else {
                     // A series is a container, not a stream. Saying so beats a
                     // Play button that does nothing.

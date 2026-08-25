@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +35,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.MediaItem
+import kotlinx.coroutines.delay
 
 /**
  * A title's own page.
@@ -54,11 +60,27 @@ fun DetailScreenMobile(
     onPlay: (MediaItem) -> Unit,
     isFavourite: Boolean = false,
     onToggleFavourite: () -> Unit = {},
+    download: Download? = null,
+    onDownload: () -> Unit = {},
+    onRemoveDownload: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var favourite by remember(item.id) { mutableStateOf(isFavourite) }
     val colors = MaurimaxTheme.colors
+
+    // The system downloader reports progress only when asked, so while
+    // something is arriving this page asks — and stops the moment it lands.
+    val inFlight = download != null &&
+        download.state != DownloadState.DONE &&
+        download.state != DownloadState.FAILED
+    LaunchedEffect(inFlight) {
+        while (inFlight) {
+            delay(1_500)
+            onRefresh()
+        }
+    }
     val kind = stringResource(item.kind.labelRes)
     val score = item.rating.trim().toDoubleOrNull()
 
@@ -135,6 +157,18 @@ fun DetailScreenMobile(
                                 onToggleFavourite()
                             },
                         )
+                        // Live has no file to keep, only a stream that never ends.
+                        if (!item.isLive) {
+                            DownloadButton(
+                                download = download,
+                                onDownload = onDownload,
+                                onRemove = onRemoveDownload,
+                            )
+                        }
+                    }
+
+                    if (download != null) {
+                        DownloadNote(download)
                     }
                 } else {
                     // Honest rather than a dead button: a series needs its
@@ -236,4 +270,63 @@ private fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
         )
     }
+}
+
+/**
+ * Keep-on-device toggle.
+ *
+ * Three states in one square, because that is what the customer is actually
+ * asking at any moment: not yet, on its way, or already here. The percentage
+ * is the whole answer while it runs — a spinner would say nothing about
+ * whether it is worth waiting for on this connection.
+ */
+@Composable
+private fun DownloadButton(
+    download: Download?,
+    onDownload: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    val colors = MaurimaxTheme.colors
+    val done = download?.state == DownloadState.DONE
+    val running = download != null && !done && download.state != DownloadState.FAILED
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(46.dp)
+            .clip(RoundedCornerShape(Corners.control))
+            .background(if (done) colors.accent else colors.surfaceRaised)
+            .clickable { if (download == null) onDownload() else onRemove() }
+            .semantics {
+                contentDescription = if (download == null) "download" else "remove download"
+            },
+    ) {
+        when {
+            done -> Text("✓", color = colors.onAccent, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            running -> Text(
+                text = "${(download.progress * 100).toInt()}%",
+                color = colors.accentText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            else -> Text("↓", color = colors.textSecondary, fontSize = 21.sp)
+        }
+    }
+}
+
+/** Says in words what the square only hints at. */
+@Composable
+private fun DownloadNote(download: Download) {
+    val colors = MaurimaxTheme.colors
+    val text = when (download.state) {
+        DownloadState.DONE -> stringResource(R.string.action_downloaded)
+        DownloadState.FAILED -> stringResource(R.string.action_download_failed)
+        else -> stringResource(R.string.action_downloading, (download.progress * 100).toInt())
+    }
+
+    Text(
+        text = text,
+        color = if (download.state == DownloadState.FAILED) colors.accentText else colors.textTertiary,
+        fontSize = 13.sp,
+    )
 }

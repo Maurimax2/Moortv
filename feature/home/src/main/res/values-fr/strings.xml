@@ -2,6 +2,14 @@
 <resources>
     <string name="row_continue_watching">Reprendre</string>
     <string name="row_favourites">Favoris</string>
+    <string name="row_downloads">Téléchargements</string>
+    <string name="action_download">Télécharger</string>
+    <!-- %1$d is a percentage, 0-100. -->
+    <string name="action_downloading">Téléchargement %1$d%%</string>
+    <string name="action_downloaded">Sur cet appareil</string>
+    <string name="action_download_remove">Supprimer le téléchargement</string>
+    <string name="action_download_failed">Échec du téléchargement. Réessayez.</string>
+    <string name="downloads_offline">Pas de connexion, mais ces titres sont sur votre appareil.</string>
     <string name="action_favourite_add">Ajouter aux favoris</string>
     <string name="action_favourite_remove">Retirer des favoris</string>
 

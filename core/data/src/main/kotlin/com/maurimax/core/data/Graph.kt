@@ -2,6 +2,7 @@ package com.maurimax.core.data
 
 import android.content.Context
 import com.maurimax.core.model.Credentials
+import com.maurimax.core.model.MediaItem
 import com.maurimax.core.network.XtreamApi
 import com.maurimax.core.network.XtreamClient
 import com.maurimax.core.network.XtreamUrls
@@ -80,6 +81,29 @@ object Graph {
     fun recordProgress(item: SavedItem) {
         if (ready) Library.recordProgress(appContext, activeUser, item)
     }
+
+    // ---- downloads --------------------------------------------------------
+
+    fun downloads(): List<Download> =
+        if (ready) Downloads.all(appContext, activeUser) else emptyList()
+
+    fun startDownload(item: MediaItem) {
+        if (ready) Downloads.start(appContext, activeUser, item)
+    }
+
+    fun removeDownload(itemId: String) {
+        if (ready) Downloads.remove(appContext, activeUser, itemId)
+    }
+
+    fun isDownloaded(itemId: String): Boolean =
+        if (ready) Downloads.isDownloaded(appContext, activeUser, itemId) else false
+
+    /**
+     * The copy on this device, if there is one. Playback asks for this first,
+     * so a downloaded film costs nothing to watch and works with no connection.
+     */
+    fun localUrl(itemId: String): String? =
+        if (ready) Downloads.localUrl(appContext, activeUser, itemId) else null
 
     fun contentRepository(credentials: Credentials): XtreamContentRepository =
         XtreamContentRepository(api = api, urls = urls, credentials = credentials)
