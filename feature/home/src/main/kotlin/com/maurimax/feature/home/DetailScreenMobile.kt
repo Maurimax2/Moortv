@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -134,28 +136,33 @@ fun DetailScreenMobile(
             ) {
                 Text(
                     text = item.title,
+                    style = MaterialTheme.typography.headlineLarge,
                     color = colors.textPrimary,
-                    fontSize = 27.sp,
-                    lineHeight = 33.sp,
-                    fontWeight = FontWeight.Black,
                 )
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Pill(text = kind)
-                    if (score != null && score > 0.0) {
-                        Pill(text = "★ ${item.rating.trim()}", accent = true)
-                    }
-                }
+                Text(
+                    // Only what the panel actually sent. Most titles here carry
+                    // a kind and nothing else, and a row of pills around two
+                    // words is chrome standing in for information.
+                    text = buildList {
+                        add(kind)
+                        if (score != null && score > 0.0) add("★ ${item.rating.trim()}")
+                        if (item.year > 0) add(item.year.toString())
+                        if (item.durationMinutes > 0) {
+                            add(stringResource(R.string.detail_minutes, item.durationMinutes))
+                        }
+                    }.joinToString("  ·  "),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textSecondary,
+                )
 
                 if (item.isPlayable) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PlayButton(
+                        DetailPlayButton(
+                            resuming = item.progress > 0f,
                             onClick = { onPlay(item) },
                             modifier = Modifier.weight(1f),
                         )
@@ -223,6 +230,31 @@ fun DetailScreenMobile(
     }
 }
 
+/** The one action on the page, in the same white the rest of the app uses. */
+@Composable
+private fun DetailPlayButton(resuming: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = MaurimaxTheme.colors
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.primaryFill)
+            .clickable(onClick = onClick),
+    ) {
+        Spacer(Modifier.weight(1f))
+        PlayGlyph(color = colors.onPrimaryFill, size = 12.dp)
+        Text(
+            text = stringResource(if (resuming) R.string.action_resume else R.string.action_play),
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.onPrimaryFill,
+            maxLines = 1,
+        )
+        Spacer(Modifier.weight(1f))
+    }
+}
+
 /**
  * Star toggle.
  *
@@ -238,35 +270,18 @@ private fun FavouriteButton(favourite: Boolean, onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(Corners.control))
-            .background(if (favourite) colors.accent else colors.surfaceRaised)
+            .size(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (favourite) colors.primaryFill else colors.secondaryFill)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
     ) {
         Text(
             text = if (favourite) "★" else "☆",
-            color = if (favourite) colors.onAccent else colors.textSecondary,
-            fontSize = 21.sp,
+            color = if (favourite) colors.onPrimaryFill else colors.textPrimary,
+            fontSize = 20.sp,
         )
     }
-}
-
-@Composable
-private fun Pill(text: String, accent: Boolean = false) {
-    val colors = MaurimaxTheme.colors
-    Text(
-        text = text,
-        color = if (accent) colors.accentText else colors.textSecondary,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(colors.surfaceRaised)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-    )
 }
 
 /** Sits over artwork, so it carries its own dark disc rather than relying on it. */
@@ -315,9 +330,9 @@ private fun DownloadButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(Corners.control))
-            .background(if (done) colors.accent else colors.surfaceRaised)
+            .size(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (done) colors.primaryFill else colors.secondaryFill)
             .clickable {
                 when {
                     download == null -> onDownload()
@@ -328,7 +343,7 @@ private fun DownloadButton(
             .semantics { contentDescription = label },
     ) {
         when {
-            done -> Text("✓", color = colors.onAccent, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            done -> Text("✓", color = colors.onPrimaryFill, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             failed -> Text("↻", color = colors.accentText, fontSize = 20.sp)
             running -> Text(
                 text = "${(download.progress * 100).toInt()}%",
@@ -336,7 +351,7 @@ private fun DownloadButton(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
-            else -> Text("↓", color = colors.textSecondary, fontSize = 21.sp)
+            else -> Text("↓", color = colors.textPrimary, fontSize = 20.sp)
         }
     }
 }

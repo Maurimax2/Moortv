@@ -56,37 +56,53 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun Hero(
-    item: MediaItem,
+    items: List<MediaItem>,
     onPlay: (MediaItem) -> Unit,
-    onOpen: (MediaItem) -> Unit,
+    inMyList: (MediaItem) -> Boolean,
+    onToggleMyList: (MediaItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
-    // Bundled art under the panel's own, so the hero is never an empty block
-    // on a first launch or a dead connection.
-    val standIn = remember(item.id) { Showcase.pick(Showcase.all, item.title.ifBlank { item.id }) }
+    if (items.isEmpty()) return
+
+    var index by remember(items) { mutableStateOf(0) }
+
+    // Nine seconds: long enough to read a title and press play, short enough
+    // that a second one is seen before anybody scrolls past. A section with a
+    // single title does not sit there ticking.
+    LaunchedEffect(items) {
+        while (items.size > 1) {
+            delay(9_000)
+            index = (index + 1) % items.size
+        }
+    }
+
+    val item = items[index.coerceIn(items.indices)]
 
     // 460 rather than filling most of the screen: on an 800dp phone that
     // leaves exactly enough for one complete rail under it, and a rail cut off
     // by the navigation is what makes a catalogue look like it ran out.
     Box(modifier = modifier.fillMaxWidth().height(460.dp)) {
         Crossfade(
-            targetState = item.id,
-            animationSpec = tween(durationMillis = 420),
+            targetState = item,
+            animationSpec = tween(durationMillis = 700),
             label = "hero art",
             modifier = Modifier.fillMaxSize(),
-        ) { _ ->
+        ) { current ->
+            val art = remember(current.id) {
+                Showcase.pick(Showcase.all, current.title.ifBlank { current.id })
+            }
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(
-                    painter = painterResource(standIn.poster),
+                    painter = painterResource(art.poster),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.TopCenter,
                     modifier = Modifier.fillMaxSize(),
                 )
-                if (item.artworkUrl.isNotBlank()) {
+                if (current.artworkUrl.isNotBlank()) {
                     AsyncImage(
-                        model = item.artworkUrl,
+                        model = current.artworkUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         alignment = Alignment.TopCenter,
