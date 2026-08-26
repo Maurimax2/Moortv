@@ -103,9 +103,13 @@ class SeasonsTest {
         assertEquals("http://art/907.jpg", episode.artworkUrl)
     }
 
-    /** Some panels file every episode under "0" and only number them properly. */
+    /**
+     * Some panels file every episode under one key, and some send the seasons
+     * as an array, which leaves the index as the key — off by one from the
+     * season it stands for. Either way the episode knows its own season.
+     */
     @Test
-    fun `a season number on the episode wins when the key says nothing`() = runTest {
+    fun `the episode's own season number wins over the key`() = runTest {
         val api = FakeApi(
             SeriesInfoResponse(
                 episodes = mapOf(
@@ -116,10 +120,23 @@ class SeasonsTest {
 
         val seasons = repository(api).seasons(series())
 
-        // The key parses to 0, which is a real number, so it wins as the panel
-        // filed it — one season holding both, still ordered.
-        assertEquals(listOf(0), seasons.map { it.number })
-        assertEquals(2, seasons.single().episodes.size)
+        assertEquals(listOf(1, 2), seasons.map { it.number })
+        assertEquals(1, seasons[0].episodes.size)
+        assertEquals(1, seasons[1].episodes.size)
+    }
+
+    /** And where the episode says nothing, the key it was filed under stands. */
+    @Test
+    fun `the key stands when the episode gives no season`() = runTest {
+        val api = FakeApi(
+            SeriesInfoResponse(
+                episodes = mapOf("4" to listOf(episode("40", season = 0, number = 1))),
+            ),
+        )
+
+        val seasons = repository(api).seasons(series())
+
+        assertEquals(listOf(4), seasons.map { it.number })
     }
 
     @Test

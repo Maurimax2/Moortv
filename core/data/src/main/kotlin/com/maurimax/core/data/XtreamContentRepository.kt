@@ -191,8 +191,11 @@ class XtreamContentRepository(
      *
      * Seasons come back keyed by number as a string, and panels are careless
      * with both the key and the `season` field inside each episode: some send
-     * one, some the other, some disagree with themselves. The key wins where an
-     * episode says nothing, because the key is what the panel filed it under.
+     * one, some the other, some disagree with themselves. The episode's own
+     * number wins when it has one, and the key is the fallback — because a
+     * panel that sends the seasons as an array rather than an object leaves us
+     * with the array index as the key, and an index is off by one from the
+     * season it stands for.
      */
     override suspend fun seasons(item: MediaItem): List<Season> {
         if (item.kind != MediaKind.SERIES) return emptyList()
@@ -206,12 +209,15 @@ class XtreamContentRepository(
 
         return response.episodes
             .flatMap { (key, episodes) ->
-                val fromKey = key.trim().toIntOrNull()
-                episodes.map { dto -> dto.toModel(fromKey ?: dto.season) }
+                val fromKey = key.trim().toIntOrNull() ?: 0
+                episodes.map { dto ->
+                    dto.toModel(dto.season.takeIf { it > 0 } ?: fromKey)
+                }
             }
-            // A panel that files everything under one key still has episode
-            // numbers, so grouping on the episode's own season keeps a box set
-            // in seasons rather than as one list of two hundred.
+            // Grouped here rather than trusting the panel's own grouping: a
+            // panel that files every episode under one key still numbers them,
+            // and this keeps a box set in seasons rather than as one list of
+            // two hundred.
             .groupBy { it.season }
             .toSortedMap()
             .map { (number, episodes) ->
