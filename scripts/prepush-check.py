@@ -83,6 +83,21 @@ for path in glob.glob('**/src/**/res/**/*.xml', recursive=True):
         print(f'BROKEN XML {path}: {error}')
         problems += 1
 
+# An apostrophe is a formatting character to aapt, not a letter. One unescaped
+# in a French string failed resource compilation for the whole TV app, and the
+# error names an internal class rather than the string — so it is worth its own
+# check. A value wrapped in double quotes is allowed to contain them.
+for path in glob.glob('**/src/**/res/**/strings.xml', recursive=True):
+    for line in open(path, encoding='utf-8'):
+        found = re.search(r'<string name="([^"]+)">(.*)</string>', line)
+        if not found:
+            continue
+        name, text = found.groups()
+        quoted = text.startswith('"') and text.endswith('"')
+        if re.search(r"(?<!\\)'", text) and not quoted:
+            print(f"UNESCAPED apostrophe in {name} -> {path}")
+            problems += 1
+
 for module in ('feature/home', 'feature/auth', 'core/data'):
     try:
         defined = set(re.findall(r'<string name="([^"]+)"',
