@@ -163,6 +163,7 @@ class XtreamContentRepository(
         title = name,
         kind = if (hasCatchUp) MediaKind.CATCH_UP else MediaKind.LIVE,
         artworkUrl = logoUrl,
+        number = channelNumber,
         playbackUrl = urls.live(credentials.username, credentials.password, streamId),
     )
 

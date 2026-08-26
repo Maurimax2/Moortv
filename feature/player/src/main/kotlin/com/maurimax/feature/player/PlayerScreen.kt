@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,8 +50,12 @@ fun PlayerScreen(
     title: String,
     isLive: Boolean,
     startPositionMs: Long = 0L,
+    /** True while the channel layer is over the video. */
+    overlayOpen: Boolean = false,
     onProgress: (positionMs: Long, durationMs: Long) -> Unit = { _, _ -> },
     onBack: () -> Unit,
+    /** Drawn over the video — the channel layer, when there is one. */
+    overlay: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -66,6 +71,20 @@ fun PlayerScreen(
             if (!isLive && startPositionMs > 0) seekTo(startPositionMs)
             playWhenReady = true
             prepare()
+        }
+    }
+
+    // Changing channel swaps the stream inside the player that is already
+    // running. Rebuilding it would tear the surface down and put a black frame
+    // and a fresh buffering spinner between every channel — which is what
+    // makes channel-surfing feel broken.
+    LaunchedEffect(url) {
+        if (player.currentMediaItem?.localConfiguration?.uri?.toString() != url) {
+            buffering = true
+            failed = false
+            player.setMediaItem(MediaItem.fromUri(url))
+            player.prepare()
+            player.playWhenReady = true
         }
     }
 
@@ -113,7 +132,14 @@ fun PlayerScreen(
                     setKeepContentOnPlayerReset(true)
                 }
             },
-            update = { it.player = player },
+            update = { view ->
+                view.player = player
+                // The channel layer owns the remote while it is open, so the
+                // transport controls step aside rather than competing for the
+                // same presses.
+                view.useController = !overlayOpen
+                if (overlayOpen) view.hideController()
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -131,6 +157,8 @@ fun PlayerScreen(
                 modifier = Modifier.align(Alignment.Center),
             )
         }
+
+        overlay()
     }
 }
 

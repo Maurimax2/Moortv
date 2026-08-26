@@ -9,6 +9,7 @@ import com.maurimax.core.data.ContentRepository
 import com.maurimax.core.data.Download
 import com.maurimax.core.data.DownloadState
 import com.maurimax.core.data.Graph
+import com.maurimax.core.data.LiveQueue
 import com.maurimax.core.data.SavedItem
 import com.maurimax.core.data.toSavedItem
 import com.maurimax.core.data.PortalFailure
@@ -314,6 +315,9 @@ class HomeViewModel(
                     if (_uiState.value.tab != tab) return@collect
                     val rows = merge(remembered, fresh)
                     cache[tab] = rows
+                    // Handed to the player so a channel can be changed without
+                    // coming back here — an intent cannot carry a list this big.
+                    if (tab == CatalogTab.LIVE) LiveQueue.set(rows)
                     // Posters from any tab will do; the sign-in wall just needs art.
                     Graph.rememberPosters(fresh.flatMap { it.items }.map { it.artworkUrl })
                     _uiState.update { it.copy(rows = rows, loading = false, failure = null) }

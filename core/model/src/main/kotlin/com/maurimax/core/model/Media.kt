@@ -18,6 +18,14 @@ data class MediaItem(
     val artworkUrl: String = "",
     /** Panel-supplied score, already formatted. Empty when the panel has none. */
     val rating: String = "",
+    /**
+     * The channel number the panel gave this stream, or 0 when it gave none.
+     *
+     * Kept because it is how people actually navigate a list of nine thousand
+     * channels — they know 8901 the way they know a number on a set-top box,
+     * and a list without it is a list you can only scroll.
+     */
+    val number: Int = 0,
     val description: String = "",
     val year: Int = 0,
     val durationMinutes: Int = 0,

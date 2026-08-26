@@ -3,4 +3,5 @@
     <string name="player_error">تعذّر تشغيل هذا المحتوى. حاول مرة أخرى أو اختر عنواناً آخر.</string>
     <string name="player_retry">إعادة المحاولة</string>
     <string name="player_back">رجوع</string>
+    <string name="player_channels">القنوات</string>
 </resources>
