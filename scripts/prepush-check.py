@@ -62,11 +62,17 @@ for path in glob.glob('**/src/**/*.kt', recursive=True):
             print(f'MISSING import {options[0]} -> {path}')
             problems += 1
 
+    # Braces inside a string are not structure. A literal holding JSON, or a
+    # brace character on its own, used to be counted as a real one and reported
+    # a balanced file as broken — so the literals go before the counting does.
+    counted = re.sub(r'\"\"\".*?\"\"\"', '""', body, flags=re.S)
+    counted = re.sub(r'\"(?:\\.|[^\"\\\n])*\"', '""', counted)
+    counted = re.sub(r"'(?:\\.|[^'\\\n])'", "''", counted)
+
     depth = 0
-    for line in body.split('\n'):
+    for line in counted.split('\n'):
         depth += line.split('//')[0].count('{') - line.split('//')[0].count('}')
-    # Raw JSON in the network tests carries braces the counter cannot see past.
-    if depth and 'Test' not in path:
+    if depth:
         print(f'UNBALANCED braces ({depth}) -> {path}')
         problems += 1
 

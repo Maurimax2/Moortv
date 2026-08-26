@@ -23,7 +23,9 @@ object Graph {
     val api: XtreamApi by lazy { XtreamClient.create(portalUrl) }
     val urls: XtreamUrls by lazy { XtreamUrls(portalUrl) }
     val credentialStore: CredentialStore by lazy { EncryptedCredentialStore(appContext) }
-    val authRepository: AuthRepository by lazy { AuthRepository(api, credentialStore) }
+    val authRepository: AuthRepository by lazy {
+        AuthRepository(api, credentialStore, portalUrl)
+    }
 
     fun init(context: Context) {
         appContext = context.applicationContext

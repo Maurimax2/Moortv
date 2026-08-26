@@ -25,4 +25,7 @@
     <!-- %1$s is the account username. -->
     <string name="accounts_remove_confirm">حذف %1$s من هذا الجهاز؟ ستُحذف قائمة المتابعة والمفضلة الخاصة به.</string>
 
+    <string name="auth_detail_show">تفاصيل الخطأ</string>
+    <string name="auth_detail_hide">إخفاء التفاصيل</string>
+    <string name="auth_detail_copy">اضغط على النص لنسخه</string>
 </resources>

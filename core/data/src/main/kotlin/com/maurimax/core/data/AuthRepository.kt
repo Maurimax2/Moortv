@@ -2,7 +2,11 @@ package com.maurimax.core.data
 
 import com.maurimax.core.model.Account
 import com.maurimax.core.model.Credentials
+import com.maurimax.core.network.PortalProbe
 import com.maurimax.core.network.XtreamApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 sealed interface LoginResult {
     data class Success(val account: Account) : LoginResult
@@ -17,6 +21,11 @@ sealed interface LoginResult {
 class AuthRepository(
     private val api: XtreamApi,
     private val credentialStore: CredentialStore,
+    /**
+     * Only for the diagnostic probe, never for a request the app makes
+     * normally — the portal is compiled in and the API already holds it.
+     */
+    private val portalUrl: String = "",
 ) {
 
     fun savedCredentials(): Credentials? = credentialStore.load()
@@ -27,8 +36,20 @@ class AuthRepository(
     suspend fun signIn(username: String, password: String, remember: Boolean = true): LoginResult {
         val response = try {
             api.login(username, password)
+        } catch (cancelled: CancellationException) {
+            // Leaving the screen mid-request is not a failed sign-in, and
+            // swallowing this told the customer their panel was broken.
+            throw cancelled
         } catch (e: Exception) {
-            return LoginResult.Failure(e.toPortalFailure())
+            val failure = e.toPortalFailure()
+            // Only where the message alone cannot be acted on. A rejected
+            // password explains itself and needs no second request.
+            if (failure is PortalFailure.UnexpectedResponse ||
+                failure is PortalFailure.NoConnection
+            ) {
+                recordDiagnostic(e, username, password)
+            }
+            return LoginResult.Failure(failure)
         }
 
         val info = response.userInfo
@@ -53,7 +74,27 @@ class AuthRepository(
         if (remember) {
             credentialStore.save(Credentials(username, password))
         }
+        PortalDiagnostics.clear()
         return LoginResult.Success(account)
+    }
+
+    /**
+     * Asks the panel the same question again, without parsing the answer, and
+     * writes down what came back — including under a couple of other client
+     * names, because a panel that serves one and refuses another looks
+     * identical to a panel that is simply broken.
+     */
+    private suspend fun recordDiagnostic(error: Throwable, username: String, password: String) {
+        val summary = "${error.javaClass.simpleName}: ${error.message.orEmpty().take(140)}"
+        if (portalUrl.isBlank()) {
+            PortalDiagnostics.record(summary)
+            return
+        }
+        val probe = runCatching {
+            withContext(Dispatchers.IO) { PortalProbe.run(portalUrl, username, password) }
+        }.getOrElse { "probe failed: ${it.javaClass.simpleName}" }
+
+        PortalDiagnostics.record("$summary\n$probe")
     }
 
     /**

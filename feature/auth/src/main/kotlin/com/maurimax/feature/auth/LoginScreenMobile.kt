@@ -35,10 +35,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -56,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maurimax.core.data.PortalDiagnostics
 import com.maurimax.core.data.AppLocale
 import com.maurimax.core.data.ThemeMode
 import com.maurimax.core.designsystem.MaurimaxDisplayFamily
@@ -291,12 +296,57 @@ private fun ColumnScope.SignInForm(
     )
 
     state.error?.let { failure ->
-        Text(
-            text = failure.message(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.accentText,
-            modifier = Modifier.padding(top = Spacing.md),
-        )
+        Column(modifier = Modifier.padding(top = Spacing.md)) {
+            Text(
+                text = failure.message(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.accentText,
+            )
+
+            // What the panel actually answered, one tap away.
+            //
+            // Not shown by default, because a customer cannot act on an HTTP
+            // status. Shown at all, because the person who can act on it is
+            // usually on the phone to the person holding the phone — and
+            // without this the only report possible is "it does not work".
+            val detail = PortalDiagnostics.last
+            if (detail != null) {
+                var open by rememberSaveable { mutableStateOf(false) }
+                Text(
+                    text = stringResource(
+                        if (open) R.string.auth_detail_hide else R.string.auth_detail_show,
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textTertiary,
+                    modifier = Modifier
+                        .padding(top = Spacing.sm)
+                        .clickable { open = !open },
+                )
+
+                if (open) {
+                    val clipboard = LocalClipboardManager.current
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = colors.textSecondary,
+                        modifier = Modifier
+                            .padding(top = Spacing.sm)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colors.surface)
+                            .clickable { clipboard.setText(AnnotatedString(detail)) }
+                            .padding(Spacing.md),
+                    )
+                    Text(
+                        text = stringResource(R.string.auth_detail_copy),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textTertiary,
+                        modifier = Modifier.padding(top = Spacing.xs),
+                    )
+                }
+            }
+        }
     }
 
     Spacer(Modifier.height(Spacing.lg))

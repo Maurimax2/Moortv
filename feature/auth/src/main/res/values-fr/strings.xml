@@ -20,4 +20,7 @@
     <!-- %1$s is the account username. -->
     <string name="accounts_remove_confirm">Supprimer %1$s de cet appareil ? Sa reprise de lecture et ses favoris seront effacés.</string>
 
+    <string name="auth_detail_show">Détails de l'erreur</string>
+    <string name="auth_detail_hide">Masquer les détails</string>
+    <string name="auth_detail_copy">Touchez le texte pour le copier</string>
 </resources>
