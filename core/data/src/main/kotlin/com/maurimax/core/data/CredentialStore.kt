@@ -1,6 +1,8 @@
 package com.maurimax.core.data
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.maurimax.core.model.Credentials
@@ -45,23 +47,40 @@ private data class StoredAccount(
 )
 
 /**
- * Backed by EncryptedSharedPreferences, so passwords are encrypted at rest with
- * a key held in the Android keystore rather than sitting in plaintext XML.
+ * The accounts on this device.
+ *
+ * Encrypted at rest with a key held in the Android keystore wherever that is
+ * possible, which is Android 6 and up, and in plain preferences where it is
+ * not. The boxes this is sold on include cheap Android 5 sticks, and refusing
+ * to run on them is a worse answer than storing a reseller's line the way every
+ * other player on those boxes already does.
+ *
+ * The same fallback covers a working keystore that throws anyway. Cheap
+ * hardware does that, and an app that cannot start is not more secure than one
+ * that starts.
  */
-class EncryptedCredentialStore(context: Context) : CredentialStore {
+class DeviceCredentialStore(context: Context) : CredentialStore {
 
-    private val prefs by lazy {
-        val key = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
+    private val prefs: SharedPreferences by lazy {
+        (encrypted(context) ?: context.getSharedPreferences(FILE, Context.MODE_PRIVATE))
+            .also(::migrate)
+    }
 
-        EncryptedSharedPreferences.create(
-            context,
-            "maurimax.credentials",
-            key,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        ).also(::migrate)
+    private fun encrypted(context: Context): SharedPreferences? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
+        return runCatching {
+            val key = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            EncryptedSharedPreferences.create(
+                context,
+                FILE,
+                key,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+        }.getOrNull()
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -116,7 +135,7 @@ class EncryptedCredentialStore(context: Context) : CredentialStore {
      * would otherwise be signed out and asked to type their password again, so
      * the old pair is folded into the list once and then removed.
      */
-    private fun migrate(prefs: android.content.SharedPreferences) {
+    private fun migrate(prefs: SharedPreferences) {
         val user = prefs.getString(LEGACY_USER, null) ?: return
         val pass = prefs.getString(LEGACY_PASS, null)
 
@@ -131,6 +150,7 @@ class EncryptedCredentialStore(context: Context) : CredentialStore {
     }
 
     private companion object {
+        const val FILE = "maurimax.credentials"
         const val KEY_ACCOUNTS = "accounts"
         const val KEY_ACTIVE = "active"
         const val LEGACY_USER = "username"

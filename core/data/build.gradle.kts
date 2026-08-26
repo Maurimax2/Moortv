@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
 
         // The portal every customer connects to. Customers never type a host —
         // they enter a username and password only. Set maurimax.portalUrl in
