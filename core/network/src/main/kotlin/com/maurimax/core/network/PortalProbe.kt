@@ -24,12 +24,21 @@ import java.util.concurrent.TimeUnit
  */
 object PortalProbe {
 
-    /** Clients a panel is most likely to have an opinion about. */
+    /**
+     * Clients a panel is most likely to have an opinion about.
+     *
+     * Panels do refuse unknown clients, and some do it with a 404 rather than a
+     * 403 so the endpoint looks absent rather than guarded. Safari is here
+     * because a plain phone browser is the one client we have seen served.
+     */
     private val AGENTS = listOf(
         "default" to null,
-        "browser" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 " +
+        "chrome" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
-        "player" to "VLC/3.0.20 LibVLC/3.0.20",
+        "safari" to "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+        "vlc" to "VLC/3.0.20 LibVLC/3.0.20",
+        "exo" to "ExoPlayerLib/2.19.1",
     )
 
     private val http = OkHttpClient.Builder()
@@ -49,7 +58,7 @@ object PortalProbe {
         val url = "$base/player_api.php" +
             "?username=${username.enc()}&password=${password.enc()}"
 
-        val lines = mutableListOf("PANEL $base")
+        val lines = mutableListOf("PANEL $base", addresses(base))
 
         for ((label, agent) in AGENTS) {
             lines += runCatching { attempt(url, label, agent) }
@@ -61,6 +70,21 @@ object PortalProbe {
         }
 
         return lines.joinToString("\n")
+    }
+
+    /**
+     * Which machine the name points at, from this device.
+     *
+     * A host with more than one address can serve the panel on one and
+     * something else on another, and a phone and a browser do not have to pick
+     * the same one — which looks exactly like a panel refusing the app.
+     */
+    private fun addresses(base: String): String {
+        val host = base.substringAfter("://", base).substringBefore('/').substringBefore(':')
+        return runCatching {
+            val ips = java.net.InetAddress.getAllByName(host).map { it.hostAddress }
+            "DNS $host -> ${ips.joinToString(", ")}"
+        }.getOrElse { "DNS $host -> ${it.javaClass.simpleName}" }
     }
 
     private fun attempt(url: String, label: String, agent: String?): String {
@@ -84,7 +108,8 @@ object PortalProbe {
                 else -> "not JSON"
             }
 
-            return "$label: HTTP ${response.code} $type → $verdict | $head"
+            val server = response.header("Server").orEmpty().take(24)
+            return "$label: HTTP ${response.code} $type $server → $verdict | $head"
         }
     }
 
