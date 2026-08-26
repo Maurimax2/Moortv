@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -66,15 +67,25 @@ fun ChannelList(
     /** The channel on screen right now, drawn as playing. Null while browsing. */
     playingId: String? = null,
     onChannelFocus: (MediaItem) -> Unit = {},
+    /** Puts the remote on the first channel when the list appears. */
+    autoFocusFirst: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val group = groups.getOrNull(selectedGroup)
     val channels = group?.items.orEmpty()
     val listState = rememberLazyListState()
+    val firstRow = remember { FocusRequester() }
 
     // Changing group starts at the top of the new one rather than wherever the
     // last one happened to be scrolled to.
     LaunchedEffect(selectedGroup) { listState.scrollToItem(0) }
+
+    // Once, when there is finally something to focus. Not on every change:
+    // pulling focus back to the top while someone is scrolling is worse than
+    // not focusing at all.
+    LaunchedEffect(autoFocusFirst, channels.isNotEmpty()) {
+        if (autoFocusFirst && channels.isNotEmpty()) runCatching { firstRow.requestFocus() }
+    }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -102,12 +113,13 @@ fun ChannelList(
             contentPadding = contentPadding,
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(channels, key = { it.id }) { channel ->
+            itemsIndexed(channels, key = { _, channel -> channel.id }) { index, channel ->
                 ChannelRow(
                     channel = channel,
                     playing = channel.id == playingId,
                     onClick = { onChannelClick(channel) },
                     onFocus = { onChannelFocus(channel) },
+                    modifier = if (index == 0) Modifier.focusRequester(firstRow) else Modifier,
                 )
             }
         }
@@ -171,11 +183,12 @@ private fun ChannelRow(
     playing: Boolean,
     onClick: () -> Unit,
     onFocus: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
     var focused by remember { mutableStateOf(false) }
 
-    Box {
+    Box(modifier = modifier) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),

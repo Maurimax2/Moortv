@@ -61,6 +61,7 @@ import com.maurimax.core.data.messageRes
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.Brand
+import com.maurimax.core.designsystem.ChannelList
 import com.maurimax.core.designsystem.BrandLockup
 import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
@@ -184,6 +185,16 @@ fun HomeScreenTv(
                         failure = state.failure,
                         downloads = state.playableDownloads,
                         onRetry = onRetry,
+                        onItemClick = onItemClick,
+                    )
+
+                    // Live gets a list, laid out where the player lays it out,
+                    // so opening a channel does not rearrange the screen: the
+                    // list stays put and the picture fills in behind it.
+                    state.tab == CatalogTab.LIVE && rows.isNotEmpty() -> TvLive(
+                        groups = rows,
+                        total = state.total,
+                        loading = state.refreshing || state.loading,
                         onItemClick = onItemClick,
                     )
 
@@ -399,6 +410,116 @@ private fun TvCatalog(
                 )
             }
         }
+    }
+}
+
+/**
+ * Live, on a television.
+ *
+ * The list sits where it sits in the player, and the space beside it holds
+ * whatever the remote is on — the logo at a size you can read across a room,
+ * its name, and its group. Pressing OK fills that same space with the picture,
+ * so the screen does not rearrange itself around you.
+ */
+@Composable
+private fun TvLive(
+    groups: List<ContentRow>,
+    total: Int,
+    loading: Boolean,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    val colors = MaurimaxTheme.colors
+    // Not keyed on the groups: more of them land while the remote is already
+    // in the list, and re-keying would jump back to the first one each time.
+    var group by remember { mutableStateOf(0) }
+    var focused by remember { mutableStateOf<MediaItem?>(null) }
+    val showing = focused ?: groups.firstOrNull()?.items?.firstOrNull()
+
+    Row(modifier = Modifier.fillMaxSize()) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(start = Spacing.tvOverscan, end = Spacing.lg),
+        ) {
+            if (showing != null) {
+                Box(
+                    modifier = Modifier
+                        .width(260.dp)
+                        .height(146.dp)
+                        .clip(RoundedCornerShape(Corners.card)),
+                ) {
+                    Artwork(
+                        url = showing.artworkUrl,
+                        title = showing.title,
+                        kind = ArtworkKind.CHANNEL_LOGO,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    modifier = Modifier.padding(top = Spacing.md),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.accent),
+                    )
+                    if (showing.number > 0) {
+                        Text(
+                            text = showing.number.toString(),
+                            color = colors.textTertiary,
+                            fontSize = 15.sp,
+                        )
+                    }
+                }
+
+                Text(
+                    text = showing.title,
+                    color = colors.textPrimary,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = Spacing.xs),
+                )
+
+                Text(
+                    text = if (loading) {
+                        stringResource(R.string.count_summary_loading, total, groups.size)
+                    } else {
+                        stringResource(R.string.count_summary, total, groups.size)
+                    },
+                    color = colors.textTertiary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = Spacing.md),
+                )
+            }
+        }
+
+        ChannelList(
+            groups = groups,
+            selectedGroup = group.coerceAtMost((groups.size - 1).coerceAtLeast(0)),
+            onGroupSelect = { group = it },
+            onChannelClick = onItemClick,
+            onChannelFocus = { focused = it },
+            // The remote has to land somewhere, and on this screen that is the
+            // list — there is nothing else here to press.
+            autoFocusFirst = true,
+            contentPadding = PaddingValues(horizontal = Spacing.sm),
+            modifier = Modifier
+                .width(404.dp)
+                .fillMaxHeight()
+                .padding(
+                    top = Spacing.md,
+                    bottom = Spacing.lg,
+                    end = Spacing.tvOverscan - Spacing.sm,
+                ),
+        )
     }
 }
 

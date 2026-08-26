@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maurimax.core.data.PortalFailure
 import com.maurimax.core.data.messageRes
+import com.maurimax.core.designsystem.ChannelList
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.R as DS
 import com.maurimax.core.designsystem.Spacing
@@ -132,6 +134,14 @@ fun HomeScreenMobile(
 
             state.failure != null && state.rows.isEmpty() ->
                 Failure(state.failure, state.playableDownloads, onRetry, onItemClick)
+
+            // Live is a list, not a wall of posters. A channel logo is not key
+            // art, nine thousand of them do not browse, and the thing people
+            // actually do here is find a name and press it.
+            state.tab == CatalogTab.LIVE -> LiveChannels(
+                state = state,
+                onItemClick = onItemClick,
+            )
 
             state.isEmpty -> EmptySection(state.tab)
 
@@ -460,6 +470,49 @@ private fun HomeUiState.railsFor(): List<ContentRow> {
             addAll(visibleRows)
         }
     }
+}
+
+/**
+ * Every channel on the line, by group.
+ *
+ * Favourites lead when there are any: someone who starred six channels out of
+ * nine thousand did it so they would not have to look for them again.
+ */
+@Composable
+private fun LiveChannels(
+    state: HomeUiState,
+    onItemClick: (MediaItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val favouritesTitle = stringResource(R.string.row_favourites)
+    val groups = remember(state.rows, state.favourites) {
+        buildList {
+            val starred = state.favourites.filter { it.isLive }
+            if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
+            addAll(state.visibleRows)
+        }
+    }
+
+    // Deliberately not keyed on the groups: they arrive in batches while the
+    // customer is already browsing, and re-keying would throw them back to the
+    // first group every time another one landed.
+    var group by rememberSaveable { mutableStateOf(0) }
+
+    ChannelList(
+        groups = groups,
+        selectedGroup = group.coerceAtMost((groups.size - 1).coerceAtLeast(0)),
+        onGroupSelect = { group = it },
+        onChannelClick = onItemClick,
+        contentPadding = PaddingValues(horizontal = Spacing.md),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(
+                // Clears the floating top bar, and the navigation below it.
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                bottom = 96.dp +
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            ),
+    )
 }
 
 /**
