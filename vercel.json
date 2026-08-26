@@ -7,6 +7,16 @@
   "cleanUrls": true,
   "redirects": [
     {
+      "source": "/p",
+      "destination": "https://github.com/Maurimax2/Moortv/releases/latest/download/maurimax-phone.apk",
+      "permanent": false
+    },
+    {
+      "source": "/t",
+      "destination": "https://github.com/Maurimax2/Moortv/releases/latest/download/maurimax-tv.apk",
+      "permanent": false
+    },
+    {
       "source": "/apk",
       "destination": "https://github.com/Maurimax2/Moortv/releases/latest/download/maurimax-phone.apk",
       "permanent": false
