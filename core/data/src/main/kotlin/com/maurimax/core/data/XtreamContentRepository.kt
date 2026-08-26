@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Reads the catalog from the portal for the signed-in customer.
@@ -49,6 +50,23 @@ class XtreamContentRepository(
     }
 
     /**
+     * Categories already fetched this session, per tab.
+     *
+     * A catalogue of this size takes a few hundred requests to walk, and a
+     * customer switching tabs half way through cancels the walk. Without this,
+     * coming back would start it again from the first category and the tab
+     * would never finish; with it, the walk resumes where it stopped and the
+     * requests already paid for are not paid for twice.
+     *
+     * Only successful answers are kept. A category that errored is left absent
+     * so the next walk retries it rather than remembering it as empty forever.
+     */
+    private val categoryItems = ConcurrentHashMap<String, List<MediaItem>>()
+
+    /** The category lists themselves, which also do not change mid-session. */
+    private val categoryLists = ConcurrentHashMap<CatalogTab, List<Category>>()
+
+    /**
      * One rail at a time.
      *
      * The panel is asked for its categories — a small list — and then for the
@@ -66,7 +84,8 @@ class XtreamContentRepository(
         // paying for the whole catalogue should be able to reach the whole
         // catalogue; the rails arrive one batch at a time, so a long list costs
         // patience rather than a blank screen.
-        val wanted = categoriesFor(tab)
+        val wanted = categoryLists[tab]
+            ?: categoriesFor(tab).also { categoryLists[tab] = it }
 
         if (wanted.isEmpty()) {
             emit(emptyList())
@@ -81,8 +100,11 @@ class XtreamContentRepository(
                         // One category failing is one missing rail, not an
                         // empty screen — panels routinely have a category that
                         // errors while the rest are fine.
-                        val items = runCatching { itemsIn(tab, category.id) }
-                            .getOrDefault(emptyList<MediaItem>())
+                        val key = "${tab.name}/${category.id}"
+                        val items = categoryItems[key]
+                            ?: runCatching { itemsIn(tab, category.id) }
+                                .onSuccess { categoryItems[key] = it }
+                                .getOrDefault(emptyList<MediaItem>())
                         category to items
                     }
                 }.awaitAll()

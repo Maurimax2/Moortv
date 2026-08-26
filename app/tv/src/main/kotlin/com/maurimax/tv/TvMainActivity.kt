@@ -27,6 +27,7 @@ import com.maurimax.feature.auth.LoginViewModel
 import com.maurimax.feature.home.DetailScreenTv
 import com.maurimax.feature.home.HomeScreenTv
 import com.maurimax.feature.home.HomeViewModel
+import com.maurimax.feature.home.ProfileScreenTv
 import com.maurimax.feature.player.PlayerActivity
 
 class TvMainActivity : ComponentActivity() {
@@ -71,6 +72,7 @@ private fun MaurimaxTvApp(
     val credentials = login.credentials
     if (login.signedIn && credentials != null) {
         var opened by remember { mutableStateOf<MediaItem?>(null) }
+        var showAccount by remember { mutableStateOf(false) }
 
         val homeViewModel: HomeViewModel = viewModel(
             key = "home-${credentials.username}",
@@ -100,7 +102,28 @@ private fun MaurimaxTvApp(
         }
 
         val chosen = opened
-        if (chosen != null) {
+        if (showAccount && chosen == null) {
+            BackHandler { showAccount = false }
+            ProfileScreenTv(
+                username = credentials.username,
+                daysRemaining = login.account?.daysRemaining(),
+                status = login.account?.status.orEmpty(),
+                downloads = homeState.downloads,
+                onDownloadClick = play,
+                onRemoveDownload = homeViewModel::removeDownload,
+                language = AppLocale.resolve(activity),
+                onLanguageChange = { language ->
+                    AppLocale.set(activity, language)
+                    // Resources and layout direction are bound at
+                    // attachBaseContext, so the activity has to be rebuilt
+                    // for the switch to take hold.
+                    activity.recreate()
+                },
+                theme = theme,
+                onThemeChange = onThemeChange,
+                onSwitchAccount = loginViewModel::signOut,
+            )
+        } else if (chosen != null) {
             BackHandler {
                 opened = null
                 homeViewModel.closeSeries()
@@ -129,9 +152,9 @@ private fun MaurimaxTvApp(
             HomeScreenTv(
                 viewModel = homeViewModel,
                 account = credentials.username,
-                // Signing out keeps the account on the device, so this is a
-                // switch back to the list rather than a goodbye.
-                onSwitchAccount = loginViewModel::signOut,
+                // The avatar opens the account page rather than signing out on
+                // the spot: on a remote, one stray OK should not end a session.
+                onAccount = { showAccount = true },
                 // A channel plays on OK — nobody wants a page about a channel.
                 // Films and series open their own page first.
                 onItemClick = { item ->

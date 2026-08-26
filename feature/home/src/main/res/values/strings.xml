@@ -47,6 +47,13 @@
     <!-- %1$d is a number of minutes. -->
     <string name="detail_minutes">%1$d د</string>
 
+    <!-- %1$d titles, %2$d categories. -->
+    <string name="count_summary">%1$d عنوان في %2$d قسم</string>
+    <!-- Same, while the rest of the catalogue is still arriving. -->
+    <string name="count_summary_loading">%1$d عنوان في %2$d قسم · ما زال التحميل جارياً</string>
+
+    <!-- %1$s is the section being searched, e.g. أفلام. -->
+    <string name="search_in">ابحث في %1$s</string>
     <string name="search_hint">ابحث عن قناة أو فيلم أو مسلسل</string>
     <string name="search_no_results">لا توجد نتائج لـ \"%1$s\"</string>
 

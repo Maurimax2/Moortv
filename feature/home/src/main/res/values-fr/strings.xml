@@ -47,6 +47,13 @@
     <!-- %1$d is a number of minutes. -->
     <string name="detail_minutes">%1$d min</string>
 
+    <!-- %1$d titles, %2$d categories. -->
+    <string name="count_summary">%1$d titres · %2$d catégories</string>
+    <!-- Same, while the rest of the catalogue is still arriving. -->
+    <string name="count_summary_loading">%1$d titres · %2$d catégories · chargement…</string>
+
+    <!-- %1$s is the section being searched, e.g. Films. -->
+    <string name="search_in">Rechercher dans %1$s</string>
     <string name="search_hint">Rechercher une chaîne, un film ou une série</string>
     <string name="search_no_results">Aucun résultat pour \"%1$s\"</string>
 

@@ -135,6 +135,17 @@ class HomeViewModel(
     private val cache = mutableMapOf<CatalogTab, List<ContentRow>>()
 
     /**
+     * Tabs whose catalogue actually finished arriving.
+     *
+     * Walking a panel this size is hundreds of requests, and leaving the tab
+     * cancels the walk part way. Without knowing which tabs are finished, the
+     * half-full result would be cached and served forever — so the customer
+     * would see a fraction of the catalogue and no way to ask for the rest.
+     * A tab that is not in here is resumed on return instead of restored.
+     */
+    private val complete = mutableSetOf<CatalogTab>()
+
+    /**
      * The in-flight load. A large panel takes seconds to answer, so without
      * cancelling, a slow response for the tab you just left arrives after the
      * new one and overwrites it — which shows films under Live TV.
@@ -153,8 +164,8 @@ class HomeViewModel(
         if (tab == _uiState.value.tab && _uiState.value.failure == null) return
 
         val cached = cache[tab]
-        if (cached != null) {
-            // Already fetched this session: instant, and no request at all.
+        if (cached != null && tab in complete) {
+            // Finished earlier this session: instant, and no request at all.
             loadJob?.cancel()
             _uiState.value = _uiState.value.copy(
                 tab = tab,
@@ -227,7 +238,10 @@ class HomeViewModel(
 
     fun clearQuery() = _uiState.update { it.copy(query = "") }
 
-    fun retry() = load(_uiState.value.tab)
+    fun retry() {
+        complete -= _uiState.value.tab
+        load(_uiState.value.tab)
+    }
 
     // ---- episodes ---------------------------------------------------------
 
@@ -279,6 +293,9 @@ class HomeViewModel(
     private fun load(tab: CatalogTab) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
+            // Whatever this tab already has: the rails collected before the
+            // customer last left it, or failing that the head of each rail from
+            // the previous session's disk cache.
             val remembered = cache[tab] ?: Graph.cachedRows(tab)
 
             _uiState.value = _uiState.value.copy(
@@ -291,15 +308,17 @@ class HomeViewModel(
             )
 
             try {
-                repository.rows(tab).collect { rows ->
+                repository.rows(tab).collect { fresh ->
                     // Cancellation is not instant, so a late emission still has
                     // to prove it belongs to the tab on screen.
                     if (_uiState.value.tab != tab) return@collect
+                    val rows = merge(remembered, fresh)
                     cache[tab] = rows
                     // Posters from any tab will do; the sign-in wall just needs art.
-                    Graph.rememberPosters(rows.flatMap { it.items }.map { it.artworkUrl })
+                    Graph.rememberPosters(fresh.flatMap { it.items }.map { it.artworkUrl })
                     _uiState.update { it.copy(rows = rows, loading = false, failure = null) }
                 }
+                complete += tab
                 if (_uiState.value.tab == tab) {
                     _uiState.update { it.copy(refreshing = false) }
                     Graph.cacheRows(tab, _uiState.value.rows)
@@ -319,6 +338,23 @@ class HomeViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Puts what just arrived over what was already there.
+     *
+     * A resumed load starts emitting from the first category again, so a plain
+     * assignment would shrink a tab of two hundred rails back to four and grow
+     * it again — the catalogue appearing to empty itself while the customer is
+     * looking at it. Rails that have arrived win, because they are complete;
+     * rails that have not are kept as they were, in their old order, until
+     * their turn comes.
+     */
+    private fun merge(old: List<ContentRow>, fresh: List<ContentRow>): List<ContentRow> {
+        if (old.isEmpty()) return fresh
+        if (fresh.isEmpty()) return old
+        val arrived = fresh.mapTo(HashSet()) { it.title }
+        return fresh + old.filterNot { it.title in arrived }
     }
 
     companion object {

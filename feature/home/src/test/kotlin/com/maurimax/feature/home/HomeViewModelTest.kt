@@ -188,4 +188,90 @@ class HomeViewModelTest {
             assertEquals(CatalogTab.MOVIES, state.tab)
             assertEquals("Action", state.rows.first().title)
         }
+
+    /**
+     * A catalogue this size takes hundreds of requests to walk, so leaving the
+     * tab half way through is the normal case rather than the edge one. Before
+     * this, the half-full result was cached and served for the rest of the
+     * session: the customer saw a fraction of the catalogue and had no way to
+     * ask for the rest.
+     */
+    @Test
+    fun `a tab left half loaded finishes when it is opened again`() = runTest(dispatcher) {
+        val slow = repositoryOf { tab ->
+            flow {
+                if (tab == CatalogTab.LIVE) {
+                    emit(listOf(row("first")))
+                    delay(5_000)
+                    emit(listOf(row("first"), row("second")))
+                } else {
+                    emit(listOf(row("movies")))
+                }
+            }
+        }
+
+        val viewModel = HomeViewModel(slow)
+        testScheduler.runCurrent()
+        assertEquals(1, viewModel.uiState.value.rows.size)
+
+        viewModel.selectTab(CatalogTab.MOVIES)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectTab(CatalogTab.LIVE)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.rows.size)
+    }
+
+    /**
+     * A resumed load starts emitting from the first category again, so without
+     * merging, a tab of two hundred rails would empty itself back to one and
+     * fill up again while the customer was looking at it.
+     */
+    @Test
+    fun `a resumed load never shrinks what is already on screen`() = runTest(dispatcher) {
+        val slow = repositoryOf { tab ->
+            flow {
+                if (tab != CatalogTab.LIVE) {
+                    emit(listOf(row("movies")))
+                    return@flow
+                }
+                emit(listOf(row("a")))
+                delay(1_000)
+                emit(listOf(row("a"), row("b")))
+                delay(1_000)
+                emit(listOf(row("a"), row("b"), row("c")))
+            }
+        }
+
+        val viewModel = HomeViewModel(slow)
+        testScheduler.advanceTimeBy(1_500)
+        assertEquals(2, viewModel.uiState.value.rows.size)
+
+        viewModel.selectTab(CatalogTab.MOVIES)
+        testScheduler.advanceUntilIdle()
+
+        // Back on Live, the walk starts over at its first rail — and the two
+        // already collected are still on screen while it catches up.
+        viewModel.selectTab(CatalogTab.LIVE)
+        testScheduler.runCurrent()
+        assertEquals(2, viewModel.uiState.value.rows.size)
+
+        testScheduler.advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.rows.size)
+    }
+
+    @Test
+    fun `search stays inside the section on screen`() = runTest(dispatcher) {
+        val viewModel = HomeViewModel(FakeContentRepository())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectTab(CatalogTab.MOVIES)
+        testScheduler.advanceUntilIdle()
+        viewModel.onQueryChange("n")
+
+        val results = viewModel.uiState.value.searchResults
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { it.kind == MediaKind.MOVIE })
+    }
 }

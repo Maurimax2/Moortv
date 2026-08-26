@@ -152,6 +152,9 @@ fun HomeScreenMobile(
                 if (!searching) onQueryChange("")
             },
             onQueryChange = onQueryChange,
+            // A search in Films is a search of films, so the field says so
+            // rather than promising the whole catalogue.
+            hint = stringResource(R.string.search_in, stringResource(state.tab.labelRes)),
             account = account,
             onAccountClick = onSwitchAccount,
             modifier = Modifier.align(Alignment.TopCenter),
@@ -198,8 +201,19 @@ private fun Catalogue(
         }
 
         item(key = "total") {
+            // The honest number, and honest about not being final yet: a count
+            // that climbs from four hundred to forty thousand while you read it
+            // looks like a broken app unless it says it is still counting.
             Text(
-                text = stringResource(R.string.count_titles, state.total),
+                text = if (state.refreshing || state.loading) {
+                    stringResource(
+                        R.string.count_summary_loading,
+                        state.total,
+                        state.visibleRows.size,
+                    )
+                } else {
+                    stringResource(R.string.count_summary, state.total, state.visibleRows.size)
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaurimaxTheme.colors.textTertiary,
                 modifier = Modifier.padding(horizontal = Spacing.md),
@@ -225,6 +239,7 @@ private fun TopBar(
     searching: Boolean,
     onSearchToggle: () -> Unit,
     onQueryChange: (String) -> Unit,
+    hint: String,
     account: String,
     onAccountClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -273,7 +288,7 @@ private fun TopBar(
                     decorationBox = { inner ->
                         if (query.isEmpty()) {
                             Text(
-                                text = stringResource(R.string.search_hint),
+                                text = hint,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = colors.textTertiary,
                                 maxLines = 1,
@@ -291,7 +306,7 @@ private fun TopBar(
 
         Image(
             painter = painterResource(DS.drawable.ic_search),
-            contentDescription = stringResource(R.string.search_hint),
+            contentDescription = hint,
             colorFilter = ColorFilter.tint(colors.textPrimary),
             modifier = Modifier
                 .size(22.dp)

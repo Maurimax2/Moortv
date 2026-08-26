@@ -22,10 +22,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,8 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +71,7 @@ import com.maurimax.core.model.CatalogTab
 import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
+import com.maurimax.core.designsystem.R as DS
 
 /** How many titles a TV rail shows. Travel on a remote is slow. */
 private const val TV_RAIL_PREVIEW = 25
@@ -72,7 +81,7 @@ fun HomeScreenTv(
     viewModel: HomeViewModel,
     onItemClick: (MediaItem) -> Unit = {},
     account: String = "",
-    onSwitchAccount: () -> Unit = {},
+    onAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,8 +90,10 @@ fun HomeScreenTv(
         onTabSelect = viewModel::selectTab,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
+        onQueryChange = viewModel::onQueryChange,
+        onClearQuery = viewModel::clearQuery,
         account = account,
-        onSwitchAccount = onSwitchAccount,
+        onAccount = onAccount,
         modifier = modifier,
     )
 }
@@ -102,12 +113,15 @@ fun HomeScreenTv(
     onTabSelect: (CatalogTab) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
+    onQueryChange: (String) -> Unit = {},
+    onClearQuery: () -> Unit = {},
     account: String = "",
-    onSwitchAccount: () -> Unit = {},
+    onAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
     var spotlight by remember(state.tab) { mutableStateOf<MediaItem?>(null) }
+    var searchOpen by remember(state.tab) { mutableStateOf(false) }
 
     val rows = state.tvRows()
     val hero = spotlight ?: rows.firstOrNull()?.items?.firstOrNull()
@@ -123,8 +137,15 @@ fun HomeScreenTv(
             TvTabBar(
                 tab = state.tab,
                 onTabSelect = onTabSelect,
+                searchOpen = searchOpen,
+                query = state.query,
+                onSearchToggle = {
+                    searchOpen = !searchOpen
+                    if (!searchOpen) onClearQuery()
+                },
+                onQueryChange = onQueryChange,
                 account = account,
-                onSwitchAccount = onSwitchAccount,
+                onAccount = onAccount,
                 modifier = Modifier.padding(
                     start = Spacing.tvOverscan,
                     end = Spacing.tvOverscan,
@@ -134,6 +155,22 @@ fun HomeScreenTv(
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
+                    // A search replaces the catalogue rather than filtering it
+                    // in place, and only ever searches the section on screen.
+                    state.searching -> if (state.noResults) {
+                        Text(
+                            text = stringResource(R.string.search_no_results, state.query),
+                            color = colors.textSecondary,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    } else {
+                        TvResults(
+                            items = state.searchResults,
+                            onFocus = { spotlight = it },
+                            onItemClick = onItemClick,
+                        )
+                    }
+
                     state.loading -> Text(
                         text = stringResource(R.string.home_loading),
                         color = colors.textSecondary,
@@ -157,6 +194,9 @@ fun HomeScreenTv(
                         rows = rows,
                         tab = state.tab,
                         hero = hero,
+                        total = state.total,
+                        catalogueRows = state.visibleRows.size,
+                        loading = state.refreshing || state.loading,
                         onFocus = { spotlight = it },
                         onItemClick = onItemClick,
                     )
@@ -193,8 +233,12 @@ private fun Backdrop(item: MediaItem) {
 private fun TvTabBar(
     tab: CatalogTab,
     onTabSelect: (CatalogTab) -> Unit,
+    searchOpen: Boolean,
+    query: String,
+    onSearchToggle: () -> Unit,
+    onQueryChange: (String) -> Unit,
     account: String,
-    onSwitchAccount: () -> Unit,
+    onAccount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
@@ -240,13 +284,23 @@ private fun TvTabBar(
             }
         }
 
+        Box(modifier = Modifier.weight(1f))
+
+        // Search sits before the account pill, so the D-pad reaches the thing
+        // that is used constantly before the thing that is used twice a year.
+        TvSearchControl(
+            open = searchOpen,
+            query = query,
+            hint = stringResource(R.string.search_in, stringResource(tab.labelRes)),
+            onToggle = onSearchToggle,
+            onQueryChange = onQueryChange,
+        )
+
         // The line in use sits at the far end of the bar, where a D-pad reaches
         // it by travelling past the tabs rather than through them.
         if (account.isNotBlank()) {
-            Box(modifier = Modifier.weight(1f))
-
             Card(
-                onClick = onSwitchAccount,
+                onClick = onAccount,
                 shape = CardDefaults.shape(RoundedCornerShape(50)),
                 colors = CardDefaults.colors(
                     containerColor = colors.identity,
@@ -281,6 +335,9 @@ private fun TvCatalog(
     rows: List<ContentRow>,
     tab: CatalogTab,
     hero: MediaItem?,
+    total: Int,
+    catalogueRows: Int,
+    loading: Boolean,
     onFocus: (MediaItem) -> Unit,
     onItemClick: (MediaItem) -> Unit,
 ) {
@@ -303,6 +360,23 @@ private fun TvCatalog(
                 ),
             )
         }
+
+        // Across a room the count is the only thing that says whether this is
+        // the whole catalogue or the start of it.
+        Text(
+            text = if (loading) {
+                stringResource(R.string.count_summary_loading, total, catalogueRows)
+            } else {
+                stringResource(R.string.count_summary, total, catalogueRows)
+            },
+            color = MaurimaxTheme.colors.textTertiary,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(
+                start = Spacing.tvOverscan,
+                end = Spacing.tvOverscan,
+                top = Spacing.sm,
+            ),
+        )
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -569,6 +643,125 @@ private fun HomeUiState.tvRows(): List<ContentRow> {
                 if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
             }
             addAll(visibleRows)
+        }
+    }
+}
+
+/**
+ * Search, on a remote.
+ *
+ * Closed it is one glyph in the bar; open it is a field that takes the
+ * television's own keyboard. Nothing about it is global: it searches the
+ * section on screen, because someone in Films looking for a title does not
+ * want a channel called the same thing.
+ */
+@Composable
+private fun TvSearchControl(
+    open: Boolean,
+    query: String,
+    hint: String,
+    onToggle: () -> Unit,
+    onQueryChange: (String) -> Unit,
+) {
+    val colors = MaurimaxTheme.colors
+    val field = remember { FocusRequester() }
+
+    // Opening the field is only useful if the keyboard follows it.
+    LaunchedEffect(open) { if (open) runCatching { field.requestFocus() } }
+
+    if (!open) {
+        Card(
+            onClick = onToggle,
+            shape = CardDefaults.shape(RoundedCornerShape(50)),
+            colors = CardDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = colors.surfaceRaised,
+            ),
+            border = CardDefaults.border(
+                focusedBorder = Border(
+                    BorderStroke(2.dp, colors.accent),
+                    shape = RoundedCornerShape(50),
+                ),
+            ),
+            scale = CardDefaults.scale(focusedScale = 1.08f),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(38.dp)) {
+                Image(
+                    painter = painterResource(DS.drawable.ic_search),
+                    contentDescription = hint,
+                    colorFilter = ColorFilter.tint(colors.textPrimary),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        return
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = Modifier
+            .width(360.dp)
+            .height(40.dp)
+            .clip(RoundedCornerShape(50))
+            .background(colors.surfaceRaised)
+            .padding(horizontal = Spacing.md),
+    ) {
+        Image(
+            painter = painterResource(DS.drawable.ic_search),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(colors.textTertiary),
+            modifier = Modifier.size(18.dp),
+        )
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 16.sp),
+            cursorBrush = SolidColor(colors.accent),
+            decorationBox = { inner ->
+                if (query.isEmpty()) {
+                    Text(
+                        text = hint,
+                        color = colors.textTertiary,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                inner()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(field),
+        )
+    }
+}
+
+/** Search results, as a wall rather than a rail: there is no category here. */
+@Composable
+private fun TvResults(
+    items: List<MediaItem>,
+    onFocus: (MediaItem) -> Unit,
+    onItemClick: (MediaItem) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(6),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        contentPadding = PaddingValues(
+            start = Spacing.tvOverscan,
+            end = Spacing.tvOverscan,
+            top = Spacing.md,
+            bottom = Spacing.xl,
+        ),
+    ) {
+        items(items, key = { it.id }) { item ->
+            TvTile(
+                item = item,
+                onFocus = onFocus,
+                onClick = { onItemClick(item) },
+            )
         }
     }
 }
