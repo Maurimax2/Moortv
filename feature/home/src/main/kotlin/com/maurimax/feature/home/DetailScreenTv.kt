@@ -42,6 +42,8 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Text
 import com.maurimax.core.data.Download
+import com.maurimax.core.data.PortalFailure
+import com.maurimax.core.data.messageRes
 import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.ArtworkKind
@@ -76,6 +78,8 @@ fun DetailScreenTv(
     onRefresh: () -> Unit = {},
     seasons: List<Season> = emptyList(),
     episodesLoading: Boolean = false,
+    episodesFailure: PortalFailure? = null,
+    onRetryEpisodes: () -> Unit = {},
     onPlayEpisode: (Episode) -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -246,6 +250,8 @@ fun DetailScreenTv(
             TvEpisodes(
                 seasons = seasons,
                 loading = episodesLoading,
+                failure = episodesFailure,
+                onRetry = onRetryEpisodes,
                 onPlay = onPlayEpisode,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -267,20 +273,35 @@ fun DetailScreenTv(
 private fun TvEpisodes(
     seasons: List<Season>,
     loading: Boolean,
+    failure: PortalFailure?,
+    onRetry: () -> Unit,
     onPlay: (Episode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
 
     if (loading || seasons.isEmpty()) {
-        Text(
-            text = stringResource(
-                if (loading) R.string.detail_episodes_loading else R.string.detail_episodes_none,
-            ),
-            color = colors.textTertiary,
-            fontSize = 15.sp,
+        // A failed request and a series with genuinely no episodes look the
+        // same to a customer, and only one of them is worth trying again.
+        Column(
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             modifier = modifier,
-        )
+        ) {
+            Text(
+                text = when {
+                    loading -> stringResource(R.string.detail_episodes_loading)
+                    failure is PortalFailure.Inactive ->
+                        stringResource(failure.messageRes, failure.status)
+                    failure != null -> stringResource(failure.messageRes)
+                    else -> stringResource(R.string.detail_episodes_none)
+                },
+                color = if (failure != null) colors.accentText else colors.textTertiary,
+                fontSize = 15.sp,
+            )
+            if (failure != null && !loading) {
+                TvAction(label = stringResource(R.string.home_retry), onClick = onRetry)
+            }
+        }
         return
     }
 

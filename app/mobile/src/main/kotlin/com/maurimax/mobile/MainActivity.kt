@@ -146,6 +146,8 @@ private fun MaurimaxMobileApp(
                 onRefresh = homeViewModel::refreshLibrary,
                 seasons = homeState.seasons,
                 episodesLoading = homeState.seasonsLoading,
+                episodesFailure = homeState.seasonsFailure,
+                onRetryEpisodes = { homeViewModel.openSeries(chosen) },
                 onPlayEpisode = { episode -> play(episode.toMediaItem()) },
                 onBack = {
                     opened = null

@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maurimax.core.data.Download
+import com.maurimax.core.data.PortalFailure
+import com.maurimax.core.data.messageRes
 import com.maurimax.core.data.DownloadState
 import com.maurimax.core.designsystem.Artwork
 import com.maurimax.core.designsystem.ArtworkKind
@@ -74,6 +76,8 @@ fun DetailScreenMobile(
     onRefresh: () -> Unit = {},
     seasons: List<Season> = emptyList(),
     episodesLoading: Boolean = false,
+    episodesFailure: PortalFailure? = null,
+    onRetryEpisodes: () -> Unit = {},
     onPlayEpisode: (Episode) -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -213,6 +217,8 @@ fun DetailScreenMobile(
                     EpisodeList(
                         seasons = seasons,
                         loading = episodesLoading,
+                        failure = episodesFailure,
+                        onRetry = onRetryEpisodes,
                         onPlay = onPlayEpisode,
                     )
                 }
@@ -385,6 +391,8 @@ private fun DownloadNote(download: Download) {
 private fun EpisodeList(
     seasons: List<Season>,
     loading: Boolean,
+    failure: PortalFailure?,
+    onRetry: () -> Unit,
     onPlay: (Episode) -> Unit,
 ) {
     val colors = MaurimaxTheme.colors
@@ -409,11 +417,37 @@ private fun EpisodeList(
     }
 
     if (seasons.isEmpty()) {
-        Text(
-            text = stringResource(R.string.detail_episodes_none),
-            color = colors.textTertiary,
-            fontSize = 14.sp,
-        )
+        // A failed request and a series the panel genuinely has no episodes
+        // for look identical to a customer, and one of them is worth trying
+        // again. Saying which, and offering the retry, is the difference
+        // between a dead page and a slow one.
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Text(
+                text = if (failure != null) {
+                    if (failure is PortalFailure.Inactive) {
+                        stringResource(failure.messageRes, failure.status)
+                    } else {
+                        stringResource(failure.messageRes)
+                    }
+                } else {
+                    stringResource(R.string.detail_episodes_none)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (failure != null) colors.accentText else colors.textTertiary,
+            )
+            if (failure != null) {
+                Text(
+                    text = stringResource(R.string.home_retry),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.textPrimary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.secondaryFill)
+                        .clickable(onClick = onRetry)
+                        .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                )
+            }
+        }
         return
     }
 

@@ -64,6 +64,9 @@ import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 
+/** How many titles a TV rail shows. Travel on a remote is slow. */
+private const val TV_RAIL_PREVIEW = 25
+
 @Composable
 fun HomeScreenTv(
     viewModel: HomeViewModel,
@@ -410,6 +413,13 @@ private fun TvRow(
                     fontSize = 18.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+                // Without the count there is no way to tell a category of nine
+                // titles from one of nine hundred.
+                Text(
+                    text = row.items.size.toString(),
+                    color = MaurimaxTheme.colors.textTertiary,
+                    fontSize = 14.sp,
                 )
             }
         }
