@@ -1,5 +1,6 @@
 package com.maurimax.core.network
 
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.Callable
@@ -61,11 +62,21 @@ object PortalProbe {
         val lines = mutableListOf("PANEL $base", addresses(base))
 
         for ((label, agent) in AGENTS) {
-            lines += runCatching { attempt(url, label, agent) }
+            lines += runCatching { attempt(url, label, agent, http) }
                 .getOrElse { error ->
                     // A failure to connect at all is as much an answer as a
                     // body is, and it is the one people misread most.
                     "$label: ${error.javaClass.simpleName}: ${error.message.orEmpty().take(80)}"
+                }
+        }
+
+        // The two families asked separately. A host behind a CDN can answer on
+        // one and not the other, and the resolver's order decides which one a
+        // client happens to get — which looks like the app being refused.
+        for ((label, client) in listOf("ipv4" to overV4, "ipv6" to overV6)) {
+            lines += runCatching { attempt(url, label, null, client) }
+                .getOrElse { error ->
+                    "$label: ${error.javaClass.simpleName}: ${error.message.orEmpty().take(60)}"
                 }
         }
 
@@ -87,12 +98,27 @@ object PortalProbe {
         }.getOrElse { "DNS $host -> ${it.javaClass.simpleName}" }
     }
 
-    private fun attempt(url: String, label: String, agent: String?): String {
+    /** Only one address family, so each can be judged on its own. */
+    private fun family(v4: Boolean) = OkHttpClient.Builder()
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(12, TimeUnit.SECONDS)
+        .dns { hostname ->
+            Dns.SYSTEM.lookup(hostname)
+                .filter { (it is java.net.Inet4Address) == v4 }
+                .ifEmpty { throw java.net.UnknownHostException("no ${if (v4) "IPv4" else "IPv6"} address") }
+        }
+        .build()
+
+    private val overV4 by lazy { family(v4 = true) }
+    private val overV6 by lazy { family(v4 = false) }
+
+    private fun attempt(url: String, label: String, agent: String?, client: OkHttpClient): String {
         val request = Request.Builder().url(url).apply {
             if (agent != null) header("User-Agent", agent)
         }.build()
 
-        http.newCall(request).execute().use { response ->
+        client.newCall(request).execute().use { response ->
             val type = response.header("Content-Type").orEmpty().substringBefore(';')
             // Only the head of the body: enough to tell JSON from an error
             // page, and it leaves the rest of a large answer unread.
@@ -108,7 +134,12 @@ object PortalProbe {
                 else -> "not JSON"
             }
 
-            val server = response.header("Server").orEmpty().take(24)
+            // cf-ray only comes back from Cloudflare, so its presence names
+            // what is answering without having to guess from an error page.
+            val server = listOfNotNull(
+                response.header("Server"),
+                response.header("cf-ray")?.let { "cf" },
+            ).joinToString("/").take(24)
             return "$label: HTTP ${response.code} $type $server → $verdict | $head"
         }
     }
