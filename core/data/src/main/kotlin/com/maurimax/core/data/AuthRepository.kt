@@ -94,7 +94,18 @@ class AuthRepository(
             withContext(Dispatchers.IO) { PortalProbe.run(portalUrl, username, password) }
         }.getOrElse { "probe failed: ${it.javaClass.simpleName}" }
 
-        PortalDiagnostics.record("$summary\n$probe")
+        // The configured address answered with something that is not the API,
+        // so the next question is whether the panel is somewhere else on the
+        // same host. It usually is: resellers move them between ports.
+        val search = if (probe.contains("\u2192 JSON |")) {
+            ""
+        } else {
+            runCatching {
+                withContext(Dispatchers.IO) { PortalProbe.locate(portalUrl, username, password) }
+            }.getOrElse { "search failed: ${it.javaClass.simpleName}" }
+        }
+
+        PortalDiagnostics.record(listOf(summary, probe, search).filter { it.isNotBlank() }.joinToString("\n"))
     }
 
     /**
