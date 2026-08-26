@@ -123,141 +123,151 @@ fun DetailScreenTv(
         Box(modifier = Modifier.fillMaxSize().background(Scrims.heroSide()))
         Box(modifier = Modifier.fillMaxSize().background(Scrims.heroFade()))
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        // A row rather than two children pinned to opposite edges: a
+        // 1080p panel is 960dp wide, and a 500dp column plus a 400dp
+        // episode list plus overscan on both sides comes to 1092dp — on a
+        // series the two used to overlap.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                // Narrower when the episode list shares the screen: a 960dp
-                // panel has no room for both at full width.
-                .width(if (item.kind == MediaKind.SERIES) 500.dp else 580.dp)
+                .fillMaxSize()
                 .padding(horizontal = Spacing.tvOverscan),
         ) {
-            Text(
-                text = item.title,
-                color = colors.textPrimary,
-                fontSize = 40.sp,
-                lineHeight = 46.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                // A series shares the width with its episodes and takes what
+                // is left; anything else has the page to itself.
+                modifier = if (item.kind == MediaKind.SERIES) {
+                    Modifier.weight(1f)
+                } else {
+                    Modifier.width(580.dp)
+                },
             ) {
-                TvPill(text = kind)
-                if (score != null && score > 0.0) TvPill(text = "★ ${item.rating.trim()}", accent = true)
-                if (item.year > 0) TvPill(text = item.year.toString())
-                if (item.durationMinutes > 0) TvPill(text = "${item.durationMinutes}′")
-            }
-
-            if (item.description.isNotBlank()) {
                 Text(
-                    text = item.description,
-                    color = colors.textSecondary,
-                    fontSize = 16.sp,
-                    lineHeight = 25.sp,
-                    maxLines = 4,
+                    text = item.title,
+                    color = colors.textPrimary,
+                    fontSize = 40.sp,
+                    lineHeight = 46.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (item.isPlayable) {
-                    TvAction(
-                        label = stringResource(
-                            // Half-watched titles say so, so the customer knows
-                            // they are picking up rather than starting over.
-                            if (item.progress > 0f) R.string.action_resume else R.string.action_play,
-                        ),
-                        accent = true,
-                        onClick = { onPlay(item) },
-                        modifier = Modifier.focusRequester(playButton),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TvPill(text = kind)
+                    if (score != null && score > 0.0) TvPill(text = "★ ${item.rating.trim()}", accent = true)
+                    if (item.year > 0) TvPill(text = item.year.toString())
+                    if (item.durationMinutes > 0) TvPill(text = "${item.durationMinutes}′")
+                }
+
+                if (item.description.isNotBlank()) {
+                    Text(
+                        text = item.description,
+                        color = colors.textSecondary,
+                        fontSize = 16.sp,
+                        lineHeight = 25.sp,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    TvAction(
-                        label = if (favourite) "★" else "☆",
-                        onClick = {
-                            favourite = !favourite
-                            onToggleFavourite()
-                        },
-                    )
-                    // Live has no file to keep, only a stream that never ends.
-                    if (!item.isLive) {
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (item.isPlayable) {
                         TvAction(
-                            label = when {
-                                download?.state == DownloadState.DONE ->
-                                    "✓  " + stringResource(R.string.action_downloaded)
-                                download?.state == DownloadState.FAILED ->
-                                    stringResource(R.string.action_download_failed)
-                                download != null -> stringResource(
-                                    R.string.action_downloading,
-                                    (download.progress * 100).toInt(),
-                                )
-                                else -> "↓  " + stringResource(R.string.action_download)
-                            },
+                            label = stringResource(
+                                // Half-watched titles say so, so the customer knows
+                                // they are picking up rather than starting over.
+                                if (item.progress > 0f) R.string.action_resume else R.string.action_play,
+                            ),
+                            accent = true,
+                            onClick = { onPlay(item) },
+                            modifier = Modifier.focusRequester(playButton),
+                        )
+                        TvAction(
+                            label = if (favourite) "★" else "☆",
                             onClick = {
-                                when {
-                                    download == null -> onDownload()
-                                    // A failed download must be one press from
-                                    // starting again, not two.
-                                    download.state == DownloadState.FAILED -> onRetryDownload()
-                                    else -> onRemoveDownload()
-                                }
+                                favourite = !favourite
+                                onToggleFavourite()
+                            },
+                        )
+                        // Live has no file to keep, only a stream that never ends.
+                        if (!item.isLive) {
+                            TvAction(
+                                label = when {
+                                    download?.state == DownloadState.DONE ->
+                                        "✓  " + stringResource(R.string.action_downloaded)
+                                    download?.state == DownloadState.FAILED ->
+                                        stringResource(R.string.action_download_failed)
+                                    download != null -> stringResource(
+                                        R.string.action_downloading,
+                                        (download.progress * 100).toInt(),
+                                    )
+                                    else -> "↓  " + stringResource(R.string.action_download)
+                                },
+                                onClick = {
+                                    when {
+                                        download == null -> onDownload()
+                                        // A failed download must be one press from
+                                        // starting again, not two.
+                                        download.state == DownloadState.FAILED -> onRetryDownload()
+                                        else -> onRemoveDownload()
+                                    }
+                                },
+                            )
+                        }
+                    } else {
+                        // A series is a container. The star still means something;
+                        // the episodes below are what plays.
+                        TvAction(
+                            label = if (favourite) "★" else "☆",
+                            onClick = {
+                                favourite = !favourite
+                                onToggleFavourite()
                             },
                         )
                     }
-                } else {
-                    // A series is a container. The star still means something;
-                    // the episodes below are what plays.
                     TvAction(
-                        label = if (favourite) "★" else "☆",
-                        onClick = {
-                            favourite = !favourite
-                            onToggleFavourite()
-                        },
+                        label = stringResource(R.string.action_back),
+                        onClick = onBack,
+                        modifier = if (item.isPlayable) Modifier else Modifier.focusRequester(playButton),
                     )
                 }
-                TvAction(
-                    label = stringResource(R.string.action_back),
-                    onClick = onBack,
-                    modifier = if (item.isPlayable) Modifier else Modifier.focusRequester(playButton),
-                )
-            }
 
-            if (item.progress > 0f) {
-                Box(
-                    modifier = Modifier
-                        .width(280.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(colors.outline),
-                ) {
+                if (item.progress > 0f) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(item.progress)
-                            .fillMaxHeight()
-                            .background(colors.accent),
-                    )
+                            .width(280.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.outline),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(item.progress)
+                                .fillMaxHeight()
+                                .background(colors.accent),
+                        )
+                    }
                 }
             }
-        }
 
-        if (item.kind == MediaKind.SERIES) {
-            TvEpisodes(
-                seasons = seasons,
-                loading = episodesLoading,
-                failure = episodesFailure,
-                onRetry = onRetryEpisodes,
-                onPlay = onPlayEpisode,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(400.dp)
-                    .padding(horizontal = Spacing.tvOverscan),
-            )
+            if (item.kind == MediaKind.SERIES) {
+                TvEpisodes(
+                    seasons = seasons,
+                    loading = episodesLoading,
+                    failure = episodesFailure,
+                    onRetry = onRetryEpisodes,
+                    onPlay = onPlayEpisode,
+                    modifier = Modifier.width(400.dp),
+                )
+            }
         }
     }
 }

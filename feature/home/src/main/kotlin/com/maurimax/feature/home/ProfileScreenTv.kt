@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +47,15 @@ import com.maurimax.core.designsystem.Corners
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.MediaItem
+
+/**
+ * How wide the page's column runs.
+ *
+ * Not the full panel: a settings row stretched across a television puts its
+ * label at one edge of the room and its value at the other, and the eye has to
+ * travel a metre to pair them.
+ */
+private val PANEL = 620.dp
 
 /**
  * The account, on a television.
@@ -91,7 +100,7 @@ fun ProfileScreenTv(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                modifier = Modifier.padding(bottom = Spacing.lg),
+                modifier = Modifier.width(PANEL).padding(bottom = Spacing.lg),
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -136,16 +145,51 @@ fun ProfileScreenTv(
             }
         }
 
+        // Downloads before settings: this page is opened to check the days
+        // left and to play something saved, not to change the language.
+        item(key = "downloads-title") {
+            Text(
+                text = stringResource(R.string.row_downloads),
+                color = colors.textPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(PANEL).padding(bottom = Spacing.sm),
+            )
+        }
+
+        if (downloads.isEmpty()) {
+            item(key = "downloads-empty") {
+                Text(
+                    text = stringResource(R.string.profile_no_downloads),
+                    color = colors.textTertiary,
+                    fontSize = 16.sp,
+                    modifier = Modifier.width(PANEL),
+                )
+            }
+        } else {
+            itemsIndexed(downloads, key = { _, download -> download.item.id }) { index, download ->
+                TvDownloadRow(
+                    download = download,
+                    onClick = { onDownloadClick(download.item) },
+                    onRemove = { onRemoveDownload(download.item) },
+                    // The remote lands on the first saved title when there is
+                    // one, so playing it is one press rather than a journey.
+                    focusRequester = first.takeIf { index == 0 },
+                )
+            }
+        }
+
         item(key = "language") {
             TvSettingRow(
                 label = stringResource(R.string.profile_language),
                 value = if (language == AppLocale.FRENCH) "Français" else "العربية",
-                focusRequester = first,
+                focusRequester = first.takeIf { downloads.isEmpty() },
                 onClick = {
                     onLanguageChange(
                         if (language == AppLocale.FRENCH) AppLocale.ARABIC else AppLocale.FRENCH,
                     )
                 },
+                modifier = Modifier.padding(top = Spacing.lg),
             )
         }
 
@@ -172,34 +216,6 @@ fun ProfileScreenTv(
                 onClick = onSwitchAccount,
             )
         }
-
-        item(key = "downloads-title") {
-            Text(
-                text = stringResource(R.string.row_downloads),
-                color = colors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = Spacing.xl, bottom = Spacing.sm),
-            )
-        }
-
-        if (downloads.isEmpty()) {
-            item(key = "downloads-empty") {
-                Text(
-                    text = stringResource(R.string.profile_no_downloads),
-                    color = colors.textTertiary,
-                    fontSize = 16.sp,
-                )
-            }
-        } else {
-            items(downloads, key = { it.item.id }) { download ->
-                TvDownloadRow(
-                    download = download,
-                    onClick = { onDownloadClick(download.item) },
-                    onRemove = { onRemoveDownload(download.item) },
-                )
-            }
-        }
     }
 }
 
@@ -209,6 +225,7 @@ private fun TvSettingRow(
     value: String,
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
     Card(
@@ -225,8 +242,8 @@ private fun TvSettingRow(
             ),
         ),
         scale = CardDefaults.scale(focusedScale = 1.02f),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
+            .width(PANEL)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
     ) {
         Row(
@@ -250,14 +267,19 @@ private fun TvSettingRow(
  * OK away.
  */
 @Composable
-private fun TvDownloadRow(download: Download, onClick: () -> Unit, onRemove: () -> Unit) {
+private fun TvDownloadRow(
+    download: Download,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    focusRequester: FocusRequester? = null,
+) {
     val colors = MaurimaxTheme.colors
     val done = download.state == DownloadState.DONE
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.width(PANEL),
     ) {
         Card(
             onClick = { if (done) onClick() },
@@ -273,7 +295,9 @@ private fun TvDownloadRow(download: Download, onClick: () -> Unit, onRemove: () 
                 ),
             ),
             scale = CardDefaults.scale(focusedScale = 1.02f),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

@@ -131,7 +131,10 @@ fun HomeScreenTv(
             .fillMaxSize()
             .background(colors.ground),
     ) {
-        if (hero != null) Backdrop(hero)
+        // Key art only. A channel's logo is a small mark on black, and blowing
+        // one up to fill two thirds of a television is a blurred rectangle
+        // behind the whole interface — charcoal is better than that.
+        if (hero != null && !hero.isLive && hero.artworkUrl.isNotBlank()) Backdrop(hero)
 
         Column(modifier = Modifier.fillMaxSize()) {
             TvTabBar(
