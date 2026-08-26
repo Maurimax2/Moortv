@@ -181,6 +181,63 @@ class XtreamContentRepository(
         ),
     )
 
+    /**
+     * The episodes of one series.
+     *
+     * The panel serves no episodes with the series list at all — this is the
+     * only call that returns anything playable for a series, and it is one
+     * request per series, which is why it happens when a customer opens one
+     * rather than in bulk.
+     *
+     * Seasons come back keyed by number as a string, and panels are careless
+     * with both the key and the `season` field inside each episode: some send
+     * one, some the other, some disagree with themselves. The key wins where an
+     * episode says nothing, because the key is what the panel filed it under.
+     */
+    override suspend fun seasons(item: MediaItem): List<Season> {
+        if (item.kind != MediaKind.SERIES) return emptyList()
+
+        // "series-123" is ours; the panel only knows 123.
+        val seriesId = item.id.removePrefix("series-").toIntOrNull() ?: return emptyList()
+
+        val response = withContext(Dispatchers.IO) {
+            api.seriesInfo(credentials.username, credentials.password, seriesId)
+        }
+
+        return response.episodes
+            .flatMap { (key, episodes) ->
+                val fromKey = key.trim().toIntOrNull()
+                episodes.map { dto -> dto.toModel(fromKey ?: dto.season) }
+            }
+            // A panel that files everything under one key still has episode
+            // numbers, so grouping on the episode's own season keeps a box set
+            // in seasons rather than as one list of two hundred.
+            .groupBy { it.season }
+            .toSortedMap()
+            .map { (number, episodes) ->
+                Season(number = number, episodes = episodes.sortedBy { it.number })
+            }
+    }
+
+    private fun EpisodeDto.toModel(seasonNumber: Int): Episode {
+        val streamId = id.trim().toIntOrNull() ?: 0
+        return Episode(
+            id = "episode-$streamId",
+            title = title,
+            season = seasonNumber,
+            number = episodeNum,
+            plot = info?.plot.orEmpty(),
+            artworkUrl = info?.image.orEmpty(),
+            // Panels give seconds; everything on screen is in minutes.
+            durationMinutes = (info?.durationSeconds ?: 0) / 60,
+            playbackUrl = if (streamId > 0) {
+                urls.episode(credentials.username, credentials.password, streamId, containerExtension)
+            } else {
+                ""
+            },
+        )
+    }
+
     /** A series is a container: its episodes carry the streams, not the series. */
     private fun Series.toItem() = MediaItem(
         id = "series-$seriesId",
