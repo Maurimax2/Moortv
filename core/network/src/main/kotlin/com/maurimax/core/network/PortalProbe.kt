@@ -103,11 +103,16 @@ object PortalProbe {
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
         .callTimeout(12, TimeUnit.SECONDS)
-        .dns { hostname ->
-            Dns.SYSTEM.lookup(hostname)
-                .filter { (it is java.net.Inet4Address) == v4 }
-                .ifEmpty { throw java.net.UnknownHostException("no ${if (v4) "IPv4" else "IPv6"} address") }
-        }
+        .dns(object : Dns {
+            override fun lookup(hostname: String): List<java.net.InetAddress> =
+                Dns.SYSTEM.lookup(hostname)
+                    .filter { (it is java.net.Inet4Address) == v4 }
+                    .ifEmpty {
+                        throw java.net.UnknownHostException(
+                            "no ${if (v4) "IPv4" else "IPv6"} address",
+                        )
+                    }
+        })
         .build()
 
     private val overV4 by lazy { family(v4 = true) }

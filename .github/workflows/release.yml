@@ -11,7 +11,12 @@ permissions:
 
 concurrency:
   group: publish-apks
-  cancel-in-progress: true
+  # Queue rather than cancel. Cancelling meant a run started moments earlier
+  # killed the one before it, and the release link was left pointing at
+  # whichever build happened to survive — twice at an older commit than the
+  # branch head. Queued runs finish in order, so the newest is the one that
+  # lands last.
+  cancel-in-progress: false
 
 jobs:
   publish:
