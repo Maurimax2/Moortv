@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maurimax.core.designsystem.Artwork
@@ -34,6 +36,9 @@ import com.maurimax.core.designsystem.badgeRes
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.Sports
+
+/** How many titles a rail shows before "see all" takes over. */
+private const val PREVIEW = 20
 
 /** Poster, portrait. Large enough that the artwork is worth looking at. */
 private val PosterWidth = 124.dp
@@ -54,6 +59,7 @@ private val ChannelHeight = 88.dp
 fun Rail(
     row: ContentRow,
     onItemClick: (MediaItem) -> Unit,
+    onSeeAll: ((ContentRow) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -64,7 +70,12 @@ fun Rail(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                modifier = Modifier.padding(horizontal = Spacing.md),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (onSeeAll != null) Modifier.clickable { onSeeAll(row) } else Modifier,
+                    )
+                    .padding(horizontal = Spacing.md),
             ) {
                 // Recognised faster than the words beside it.
                 Sports.badge(row.title)?.let { league ->
@@ -80,7 +91,24 @@ fun Rail(
                     color = MaurimaxTheme.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                // The count is the point: a rail shows a handful, and without
+                // this there is no way to know whether the category holds nine
+                // titles or nine hundred.
+                Text(
+                    text = row.items.size.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaurimaxTheme.colors.textTertiary,
+                )
+                if (onSeeAll != null && row.items.size > PREVIEW) {
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = stringResource(R.string.see_all),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaurimaxTheme.colors.accentText,
+                    )
+                }
             }
         }
 
@@ -90,7 +118,10 @@ fun Rail(
         ) {
             // Position is part of the key: a panel is free to return the same
             // id twice in one category, and a duplicate key crashes the row.
-            itemsIndexed(row.items, key = { index, item -> "$index-${item.id}" }) { _, item ->
+            // A rail is a shortlist. Everything else is behind "see all",
+            // because a horizontal list nobody can reach the end of is not a
+            // way to browse nine hundred titles.
+            itemsIndexed(row.items.take(PREVIEW), key = { index, item -> "$index-${item.id}" }) { _, item ->
                 if (item.isLive) {
                     ChannelCard(item = item, onClick = { onItemClick(item) })
                 } else {

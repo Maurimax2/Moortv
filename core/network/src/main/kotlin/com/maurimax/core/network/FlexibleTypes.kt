@@ -81,9 +81,21 @@ object EpisodesBySeason : KSerializer<Map<String, List<EpisodeDto>>> {
         }
     }
 
+    /**
+     * A season's episodes, however they were sent.
+     *
+     * Usually an array. Some panels send an object keyed by episode number
+     * instead, which is the same list with the index written down, so both are
+     * read the same way. Each episode is decoded on its own: one malformed
+     * entry in an otherwise good series must not cost the customer the show.
+     */
     private fun episodesIn(json: JsonDecoder, value: JsonElement): List<EpisodeDto> {
-        val array = value as? JsonArray ?: return emptyList()
-        return array.mapNotNull { entry ->
+        val entries = when (value) {
+            is JsonArray -> value.toList()
+            is JsonObject -> value.values.toList()
+            else -> return emptyList()
+        }
+        return entries.mapNotNull { entry ->
             runCatching { json.json.decodeFromJsonElement(EpisodeDto.serializer(), entry) }.getOrNull()
         }
     }

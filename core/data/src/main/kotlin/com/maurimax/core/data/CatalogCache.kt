@@ -48,9 +48,17 @@ object CatalogCache {
         }.getOrDefault(emptyList())
     }
 
+    /** How much of each rail is worth keeping: enough to fill the screen. */
+    private const val PREVIEW = 20
+
     fun save(context: Context, owner: String, tab: CatalogTab, rows: List<ContentRow>) {
         if (rows.isEmpty()) return
-        val cached = rows.map { row -> CachedRow(row.title, row.items.map(MediaItem::toCached)) }
+        // Only the head of each rail. A full catalogue can run to tens of
+        // thousands of titles, and writing all of it to disk on every refresh
+        // would cost more than the head start is worth.
+        val cached = rows.map { row ->
+            CachedRow(row.title, row.items.take(PREVIEW).map(MediaItem::toCached))
+        }
         prefs(context, owner).edit()
             .putString(tab.name, json.encodeToString(ListSerializer(CachedRow.serializer()), cached))
             .apply()

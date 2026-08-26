@@ -33,10 +33,12 @@ import com.maurimax.core.model.CatalogTab
 import com.maurimax.feature.home.Destination
 import com.maurimax.feature.home.HomeScreenMobile
 import com.maurimax.feature.home.MaurimaxBottomBar
+import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.model.toMediaItem
 import com.maurimax.feature.home.DetailScreenMobile
 import com.maurimax.feature.home.HomeViewModel
+import com.maurimax.feature.home.MediaGrid
 import com.maurimax.feature.home.ProfileScreen
 import com.maurimax.feature.player.PlayerActivity
 
@@ -160,11 +162,33 @@ private fun MaurimaxMobileApp(
                 BackHandler { destination = Destination.Section(homeState.tab) }
             }
 
+            var openCategory by remember { mutableStateOf<ContentRow?>(null) }
+            val category = openCategory
+            if (category != null) BackHandler { openCategory = null }
+
             Box(modifier = Modifier.fillMaxSize()) {
-                if (destination is Destination.Profile) {
+                if (category != null) {
+                    MediaGrid(
+                        title = category.title,
+                        items = category.items,
+                        onItemClick = { item ->
+                            if (item.isLive) {
+                                play(item)
+                            } else {
+                                opened = item
+                                homeViewModel.openSeries(item)
+                            }
+                        },
+                        onBack = { openCategory = null },
+                    )
+                } else if (destination is Destination.Profile) {
                     ProfileScreen(
                         username = credentials.username,
-                        downloads = homeState.playableDownloads.size,
+                        daysRemaining = login.account?.daysRemaining(),
+                        status = login.account?.status.orEmpty(),
+                        downloads = homeState.downloads,
+                        onDownloadClick = play,
+                        onRemoveDownload = homeViewModel::removeDownload,
                         language = AppLocale.resolve(activity),
                         onLanguageChange = { language ->
                             AppLocale.set(activity, language)
@@ -195,12 +219,14 @@ private fun MaurimaxMobileApp(
                                 homeViewModel.openSeries(item)
                             }
                         },
+                        onSeeAll = { row -> openCategory = row },
                     )
                 }
 
                 MaurimaxBottomBar(
                     current = destination,
                     onSelect = { picked ->
+                        openCategory = null
                         destination = picked
                         if (picked is Destination.Section) homeViewModel.selectTab(picked.tab)
                     },

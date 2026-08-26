@@ -3,6 +3,9 @@
     <string name="row_continue_watching">متابعة المشاهدة</string>
     <string name="row_favourites">المفضلة</string>
     <string name="row_downloads">التنزيلات</string>
+    <!-- %1$d is a number of films, series or channels. -->
+    <string name="count_titles">%1$d عنوان</string>
+    <string name="see_all">عرض الكل</string>
     <string name="action_download">تنزيل</string>
     <!-- %1$d is a percentage, 0-100. -->
     <string name="action_downloading">جارٍ التنزيل %1$d%%</string>
@@ -18,10 +21,13 @@
     <string name="nav_movies">أفلام</string>
     <string name="nav_series">مسلسلات</string>
     <string name="nav_profile">حسابي</string>
-    <!-- %1$d is how many titles are kept on the device. -->
-    <string name="profile_downloads">%1$d عنوان محفوظ على الجهاز</string>
     <string name="profile_language">اللغة</string>
     <string name="profile_appearance">المظهر</string>
+    <!-- %1$d is how many whole days are left on the subscription. -->
+    <string name="profile_days_left">تبقّى %1$d يوماً على انتهاء اشتراكك</string>
+    <string name="profile_expired">انتهى اشتراكك</string>
+    <string name="profile_no_downloads">لم تحفظ أي عنوان على هذا الجهاز بعد.</string>
+    <string name="accounts_remove_short">حذف</string>
     <string name="profile_switch_account">تبديل الاشتراك</string>
     <string name="profile_theme_dark">داكن</string>
     <string name="profile_theme_light">فاتح</string>

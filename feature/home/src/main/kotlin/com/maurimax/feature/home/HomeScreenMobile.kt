@@ -58,6 +58,7 @@ import com.maurimax.core.model.MediaItem
 fun HomeScreenMobile(
     viewModel: HomeViewModel,
     onItemClick: (MediaItem) -> Unit = {},
+    onSeeAll: (ContentRow) -> Unit = {},
     account: String = "",
     onSwitchAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -68,6 +69,7 @@ fun HomeScreenMobile(
         onQueryChange = viewModel::onQueryChange,
         onRetry = viewModel::retry,
         onItemClick = onItemClick,
+        onSeeAll = onSeeAll,
         inMyList = { item -> state.favourites.any { it.id == item.id } },
         onToggleMyList = viewModel::toggleFavourite,
         account = account,
@@ -90,6 +92,7 @@ fun HomeScreenMobile(
     onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onItemClick: (MediaItem) -> Unit = {},
+    onSeeAll: (ContentRow) -> Unit = {},
     inMyList: (MediaItem) -> Boolean = { false },
     onToggleMyList: (MediaItem) -> Unit = {},
     account: String = "",
@@ -105,6 +108,26 @@ fun HomeScreenMobile(
             .background(colors.ground),
     ) {
         when {
+            // A search replaces the catalogue rather than filtering it in
+            // place: the answer is a list of titles, not a reshuffled set of
+            // categories with one hit each.
+            state.searching -> if (state.noResults) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = stringResource(R.string.search_no_results, state.query),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textSecondary,
+                        modifier = Modifier.align(Alignment.Center).padding(Spacing.lg),
+                    )
+                }
+            } else {
+                MediaGrid(
+                    title = stringResource(state.tab.labelRes),
+                    items = state.searchResults,
+                    onItemClick = onItemClick,
+                )
+            }
+
             state.loading -> LoadingCatalogue(state.tab)
 
             state.failure != null && state.rows.isEmpty() ->
@@ -115,6 +138,7 @@ fun HomeScreenMobile(
             else -> Catalogue(
                 state = state,
                 onItemClick = onItemClick,
+                onSeeAll = onSeeAll,
                 inMyList = inMyList,
                 onToggleMyList = onToggleMyList,
             )
@@ -139,11 +163,12 @@ fun HomeScreenMobile(
 private fun Catalogue(
     state: HomeUiState,
     onItemClick: (MediaItem) -> Unit,
+    onSeeAll: (ContentRow) -> Unit,
     inMyList: (MediaItem) -> Boolean,
     onToggleMyList: (MediaItem) -> Unit,
 ) {
     val rows = state.railsFor()
-    val hero = if (state.query.isBlank()) state.heroItems() else emptyList()
+    val hero = state.heroItems()
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -172,19 +197,17 @@ private fun Catalogue(
             }
         }
 
-        itemsIndexed(rows, key = { index, row -> "$index-${row.title}" }) { _, row ->
-            Rail(row = row, onItemClick = onItemClick)
+        item(key = "total") {
+            Text(
+                text = stringResource(R.string.count_titles, state.total),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaurimaxTheme.colors.textTertiary,
+                modifier = Modifier.padding(horizontal = Spacing.md),
+            )
         }
 
-        if (state.noResults) {
-            item(key = "no-results") {
-                Text(
-                    text = stringResource(R.string.search_no_results, state.query),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaurimaxTheme.colors.textSecondary,
-                    modifier = Modifier.padding(Spacing.lg),
-                )
-            }
+        itemsIndexed(rows, key = { index, row -> "$index-${row.title}" }) { _, row ->
+            Rail(row = row, onItemClick = onItemClick, onSeeAll = onSeeAll)
         }
     }
 }
@@ -412,15 +435,13 @@ private fun HomeUiState.railsFor(): List<ContentRow> {
     val resumeTitle = stringResource(R.string.row_continue_watching)
     val favouritesTitle = stringResource(R.string.row_favourites)
 
-    return remember(tab, rows, resume, favourites, downloads, query) {
+    return remember(tab, rows, resume, favourites, downloads) {
         buildList {
-            if (query.isBlank()) {
-                val (unfinished, starred) = personalFor(tab)
-                val kept = downloadsFor(tab)
-                if (kept.isNotEmpty()) add(ContentRow(downloadsTitle, kept))
-                if (unfinished.isNotEmpty()) add(ContentRow(resumeTitle, unfinished))
-                if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
-            }
+            val (unfinished, starred) = personalFor(tab)
+            val kept = downloadsFor(tab)
+            if (kept.isNotEmpty()) add(ContentRow(downloadsTitle, kept))
+            if (unfinished.isNotEmpty()) add(ContentRow(resumeTitle, unfinished))
+            if (starred.isNotEmpty()) add(ContentRow(favouritesTitle, starred))
             addAll(visibleRows)
         }
     }

@@ -2,6 +2,7 @@ package com.maurimax.feature.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +29,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.maurimax.core.data.AppLocale
+import com.maurimax.core.data.Download
+import com.maurimax.core.data.DownloadState
 import com.maurimax.core.data.ThemeMode
+import com.maurimax.core.designsystem.Artwork
+import com.maurimax.core.designsystem.ArtworkKind
 import com.maurimax.core.designsystem.MaurimaxTheme
 import com.maurimax.core.designsystem.Spacing
+import com.maurimax.core.model.MediaItem
 
 /**
  * The account, and the handful of things that belong to it rather than to the
@@ -43,7 +49,11 @@ import com.maurimax.core.designsystem.Spacing
 @Composable
 fun ProfileScreen(
     username: String,
-    downloads: Int,
+    daysRemaining: Int?,
+    status: String,
+    downloads: List<Download>,
+    onDownloadClick: (MediaItem) -> Unit,
+    onRemoveDownload: (MediaItem) -> Unit,
     language: String,
     onLanguageChange: (String) -> Unit,
     theme: ThemeMode,
@@ -92,10 +102,20 @@ fun ProfileScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // The one number a customer on a prepaid line actually wants,
+                // and the reason they open this page at all.
                 Text(
-                    text = stringResource(R.string.profile_downloads, downloads),
+                    text = when {
+                        daysRemaining == null -> status
+                        daysRemaining <= 0 -> stringResource(R.string.profile_expired)
+                        else -> stringResource(R.string.profile_days_left, daysRemaining)
+                    },
                     style = MaterialTheme.typography.labelMedium,
-                    color = colors.textSecondary,
+                    color = if (daysRemaining != null && daysRemaining <= 7) {
+                        colors.accentText
+                    } else {
+                        colors.textSecondary
+                    },
                 )
             }
         }
@@ -130,6 +150,101 @@ fun ProfileScreen(
         )
 
         Divider()
+
+        Text(
+            text = stringResource(R.string.row_downloads),
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(top = Spacing.xl, bottom = Spacing.sm),
+        )
+
+        if (downloads.isEmpty()) {
+            Text(
+                text = stringResource(R.string.profile_no_downloads),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textTertiary,
+            )
+        } else {
+            downloads.forEach { download ->
+                DownloadRow(
+                    download = download,
+                    onClick = { onDownloadClick(download.item) },
+                    onRemove = { onRemoveDownload(download.item) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One kept title.
+ *
+ * Here rather than only on each film's own page, because a customer looking
+ * for what they downloaded is looking for a list of it — hunting for the films
+ * one at a time to find out which ones finished is not a list.
+ */
+@Composable
+private fun DownloadRow(download: Download, onClick: () -> Unit, onRemove: () -> Unit) {
+    val colors = MaurimaxTheme.colors
+    val done = download.state == DownloadState.DONE
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = done, onClick = onClick)
+            .padding(vertical = Spacing.sm),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 64.dp, height = 40.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(colors.surface),
+        ) {
+            Artwork(
+                url = download.item.artworkUrl,
+                title = download.item.title,
+                kind = ArtworkKind.POSTER,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = download.item.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = when (download.state) {
+                    DownloadState.DONE -> stringResource(R.string.action_downloaded)
+                    DownloadState.FAILED -> stringResource(R.string.action_download_failed)
+                    else -> stringResource(
+                        R.string.action_downloading,
+                        (download.progress * 100).toInt(),
+                    )
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (download.state == DownloadState.FAILED) {
+                    colors.accentText
+                } else {
+                    colors.textSecondary
+                },
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.accounts_remove_short),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.textTertiary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(onClick = onRemove)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+        )
     }
 }
 

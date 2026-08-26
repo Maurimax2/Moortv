@@ -86,6 +86,12 @@ object Downloads {
         val app = context.applicationContext
         val manager = app.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager ?: return
 
+        // The system downloader will not create intermediate directories, and
+        // fails the request outright if the parent is missing. This is why
+        // downloads did nothing at all on a fresh install.
+        val folder = File(app.getExternalFilesDir(Environment.DIRECTORY_MOVIES), FOLDER)
+        if (!folder.exists() && !folder.mkdirs()) return
+
         val request = DownloadManager.Request(Uri.parse(item.playbackUrl))
             .setTitle(item.title)
             .setDescription(MAURIMAX)
@@ -175,6 +181,10 @@ object Downloads {
                     DownloadManager.STATUS_SUCCESSFUL -> DownloadState.DONE
                     DownloadManager.STATUS_FAILED -> DownloadState.FAILED
                     DownloadManager.STATUS_RUNNING -> DownloadState.RUNNING
+                    // Paused counts as running: the downloader resumes on its
+                    // own when the network returns, and telling a customer it
+                    // stopped invites them to cancel something still working.
+                    DownloadManager.STATUS_PAUSED -> DownloadState.RUNNING
                     else -> DownloadState.QUEUED
                 }
             }

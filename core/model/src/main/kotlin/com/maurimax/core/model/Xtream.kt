@@ -46,6 +46,20 @@ data class Account(
     val maxConnections: Int,
 ) {
     val isActive: Boolean get() = status.equals("Active", ignoreCase = true)
+
+    /**
+     * Whole days left on the subscription, or null when the panel gave no
+     * expiry — which some lines genuinely do not have.
+     *
+     * Rounded down, because a customer with eleven hours left has today and
+     * not tomorrow, and telling them "1 day" the evening before it lapses is
+     * how people miss a renewal.
+     */
+    fun daysRemaining(nowEpochSeconds: Long = System.currentTimeMillis() / 1000): Int? {
+        val expiry = expiresAtEpochSeconds ?: return null
+        val seconds = expiry - nowEpochSeconds
+        return if (seconds <= 0) 0 else (seconds / 86_400).toInt()
+    }
 }
 
 /** Stored credentials for the one portal this app is built against. */

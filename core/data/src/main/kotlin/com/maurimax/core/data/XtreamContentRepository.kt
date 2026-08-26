@@ -37,10 +37,6 @@ class XtreamContentRepository(
     private val api: XtreamApi,
     private val urls: XtreamUrls,
     private val credentials: Credentials,
-    /** Rows on the home screen. A panel can expose hundreds of categories. */
-    private val maxRows: Int = 12,
-    /** Items per row. The rail is horizontally scrollable, not endless. */
-    private val maxItemsPerRow: Int = 20,
 ) : ContentRepository {
 
     private companion object {
@@ -66,7 +62,11 @@ class XtreamContentRepository(
      * time one small request takes rather than after all of them.
      */
     override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flow {
-        val wanted = categoriesFor(tab).take(maxRows)
+        // Every category the panel has, not a first page of them. A customer
+        // paying for the whole catalogue should be able to reach the whole
+        // catalogue; the rails arrive one batch at a time, so a long list costs
+        // patience rather than a blank screen.
+        val wanted = categoriesFor(tab)
 
         if (wanted.isEmpty()) {
             emit(emptyList())
@@ -89,9 +89,10 @@ class XtreamContentRepository(
             }
 
             loaded.forEach { (category, items) ->
-                if (items.isNotEmpty()) {
-                    filled += ContentRow(category.name, items.take(maxItemsPerRow))
-                }
+                // The whole category is kept, not a preview of it: the rail
+                // shows the first of them and the count beside its name is the
+                // rest, which is only honest if the rest is actually here.
+                if (items.isNotEmpty()) filled += ContentRow(category.name, items)
             }
             emit(filled.toList())
         }

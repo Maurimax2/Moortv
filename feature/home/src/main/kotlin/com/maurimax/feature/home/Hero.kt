@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.maurimax.core.designsystem.MaurimaxTheme
-import com.maurimax.core.designsystem.Showcase
 import com.maurimax.core.designsystem.Spacing
 import com.maurimax.core.model.MediaItem
 import kotlinx.coroutines.delay
@@ -89,17 +88,9 @@ fun Hero(
             label = "hero art",
             modifier = Modifier.fillMaxSize(),
         ) { current ->
-            val art = remember(current.id) {
-                Showcase.pick(Showcase.all, current.title.ifBlank { current.id })
-            }
-            Box(modifier = Modifier.fillMaxSize()) {
-                Image(
-                    painter = painterResource(art.poster),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier.fillMaxSize(),
-                )
+            // Only the panel's own artwork. A bundled poster behind a title
+            // from the server is a picture of a different film.
+            Box(modifier = Modifier.fillMaxSize().background(colors.surface)) {
                 if (current.artworkUrl.isNotBlank()) {
                     AsyncImage(
                         model = current.artworkUrl,

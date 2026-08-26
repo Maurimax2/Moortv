@@ -3,6 +3,9 @@
     <string name="row_continue_watching">Reprendre</string>
     <string name="row_favourites">Favoris</string>
     <string name="row_downloads">Téléchargements</string>
+    <!-- %1$d is a number of films, series or channels. -->
+    <string name="count_titles">%1$d titres</string>
+    <string name="see_all">Tout voir</string>
     <string name="action_download">Télécharger</string>
     <!-- %1$d is a percentage, 0-100. -->
     <string name="action_downloading">Téléchargement %1$d%%</string>
@@ -18,10 +21,13 @@
     <string name="nav_movies">Films</string>
     <string name="nav_series">Séries</string>
     <string name="nav_profile">Compte</string>
-    <!-- %1$d is how many titles are kept on the device. -->
-    <string name="profile_downloads">%1$d titre(s) sur cet appareil</string>
     <string name="profile_language">Langue</string>
     <string name="profile_appearance">Apparence</string>
+    <!-- %1$d is how many whole days are left on the subscription. -->
+    <string name="profile_days_left">%1$d jour(s) restant(s) sur votre abonnement</string>
+    <string name="profile_expired">Votre abonnement a expiré</string>
+    <string name="profile_no_downloads">Aucun titre enregistré sur cet appareil.</string>
+    <string name="accounts_remove_short">Supprimer</string>
     <string name="profile_switch_account">Changer d\'abonnement</string>
     <string name="profile_theme_dark">Sombre</string>
     <string name="profile_theme_light">Clair</string>

@@ -50,23 +50,32 @@ data class HomeUiState(
     val playableDownloads: List<MediaItem>
         get() = downloads.filter { it.state == DownloadState.DONE }.map { it.item }
 
+    /** The catalogue rails, untouched by search. */
+    val visibleRows: List<ContentRow> get() = rows
+
     /**
-     * What the catalogue shows right now.
+     * What a search finds, as one flat list.
      *
-     * Search filters the tab already in memory rather than asking the panel:
-     * the whole section is loaded anyway, so results are instant and work even
-     * when the panel is slow. Rows that lose every title are dropped, so an
-     * empty category header never sits over nothing.
+     * Scoped to the section on screen and never across the app: someone in
+     * Films is looking for a film, and a channel in those results is noise.
+     * Flat rather than grouped by category, because a customer searching knows
+     * the title and not which folder a reseller filed it under — which is
+     * exactly how every other player on this panel behaves.
      */
-    val visibleRows: List<ContentRow>
+    val searchResults: List<MediaItem>
         get() {
             val q = query.trim()
-            if (q.isBlank()) return rows
-            return rows.mapNotNull { row ->
-                val hits = row.items.filter { it.title.contains(q, ignoreCase = true) }
-                if (hits.isEmpty()) null else row.copy(items = hits)
-            }
+            if (q.isBlank()) return emptyList()
+            return rows.asSequence()
+                .flatMap { it.items.asSequence() }
+                .filter { it.title.contains(q, ignoreCase = true) }
+                .distinctBy { it.id }
+                .take(MAX_RESULTS)
+                .toList()
         }
+
+    /** How many titles this section holds in total. */
+    val total: Int get() = rows.sumOf { it.items.size }
 
     /**
      * Personal rows only make sense for the tab they belong to: a film the
@@ -97,8 +106,14 @@ data class HomeUiState(
             }
         }
 
-    val noResults: Boolean get() = query.isNotBlank() && visibleRows.isEmpty() && !loading
+    val searching: Boolean get() = query.isNotBlank()
+    val noResults: Boolean get() = searching && searchResults.isEmpty() && !loading
     val isEmpty: Boolean get() = !loading && failure == null && rows.isEmpty()
+
+    private companion object {
+        /** A search is for finding one title, not for browsing the catalogue. */
+        const val MAX_RESULTS = 200
+    }
 }
 
 /**
