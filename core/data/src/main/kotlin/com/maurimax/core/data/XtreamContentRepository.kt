@@ -23,7 +23,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -47,6 +47,14 @@ class XtreamContentRepository(
          * fighting itself for bandwidth.
          */
         const val CONCURRENT_CATEGORIES = 4
+
+        /**
+         * How many categories are worth fetching one at a time while the whole
+         * catalogue is on its way. Two screenfuls: enough that the customer has
+         * something to look at and to start moving through, few enough that the
+         * requests thrown away when the bulk answer lands are not worth counting.
+         */
+        const val HEAD_START = 8
     }
 
     /**
@@ -76,62 +84,133 @@ class XtreamContentRepository(
     private val incomplete = ConcurrentHashMap.newKeySet<CatalogTab>()
 
     /**
-     * One rail at a time.
+     * The catalogue for a tab.
      *
-     * The panel is asked for its categories — a small list — and then for the
-     * channels of each category on its own. It is never asked for the whole
-     * catalogue: `get_live_streams` without a category returns every stream on
-     * the server, which here is tens of megabytes and tens of thousands of
-     * objects to parse before a single tile can be drawn. That request is what
-     * made the app look dead on a real connection.
+     * The panel will answer two different ways and this asks it both at once,
+     * because each is bad at what the other is good at.
      *
-     * Rails are emitted as they land, so the screen starts filling in about the
-     * time one small request takes rather than after all of them.
+     * Per category is one small request per rail. The first tiles land in about
+     * the time one request takes, and the last ones land in about the time two
+     * hundred of them take: on a connection with a third of a second of latency
+     * that is minutes, four at a time, and a customer who leaves before it
+     * finishes has genuinely never seen most of what they pay for.
+     *
+     * In bulk is one request for every stream on the account. It is megabytes
+     * and tens of thousands of objects, so nothing at all can be drawn until it
+     * lands — but when it lands, the tab is finished, in one round trip instead
+     * of two hundred.
+     *
+     * So: the bulk request goes first and runs the whole time, a handful of
+     * categories are fetched individually to put something on screen while it
+     * travels, and whatever the bulk request returns replaces all of it and
+     * completes the tab. The individual head start is thrown away, which costs
+     * a few requests and buys the customer a screen that is never blank.
      */
-    override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flow {
+    override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = channelFlow {
         // A fresh walk starts whole until something goes wrong in it.
         incomplete -= tab
 
         // Every category the panel has, not a first page of them. A customer
         // paying for the whole catalogue should be able to reach the whole
-        // catalogue; the rails arrive one batch at a time, so a long list costs
-        // patience rather than a blank screen.
+        // catalogue.
         val wanted = categoryLists[tab]
             ?: categoriesFor(tab).also { categoryLists[tab] = it }
 
         if (wanted.isEmpty()) {
-            emit(emptyList())
-            return@flow
+            send(emptyList())
+            return@channelFlow
         }
+
+        // Started before anything else, because it is the long pole and every
+        // request below it is filling time while it travels.
+        val whole = async { runCatching { everythingIn(tab) } }
 
         val filled = mutableListOf<ContentRow>()
-        for (batch in wanted.chunked(CONCURRENT_CATEGORIES)) {
-            val loaded: List<Pair<Category, List<MediaItem>>> = coroutineScope {
-                batch.map { category ->
-                    async {
-                        // One category failing is one missing rail, not an
-                        // empty screen — panels routinely have a category that
-                        // errors while the rest are fine.
-                        val key = "${tab.name}/${category.id}"
-                        val items = categoryItems[key]
-                            ?: runCatching { itemsIn(tab, category.id) }
-                                .onSuccess { categoryItems[key] = it }
-                                .onFailure { incomplete += tab }
-                                .getOrDefault(emptyList<MediaItem>())
-                        category to items
-                    }
-                }.awaitAll()
-            }
+        val fetched = mutableSetOf<String>()
 
-            loaded.forEach { (category, items) ->
-                // The whole category is kept, not a preview of it: the rail
-                // shows the first of them and the count beside its name is the
-                // rest, which is only honest if the rest is actually here.
-                if (items.isNotEmpty()) filled += ContentRow(category.name, items)
+        // Something on screen quickly. Stops as soon as the bulk answer is in,
+        // since anything fetched after that point is a request thrown away.
+        for (batch in wanted.take(HEAD_START).chunked(CONCURRENT_CATEGORIES)) {
+            if (whole.isCompleted) break
+            appendCategories(tab, batch, filled, fetched)
+            send(filled.toList())
+        }
+
+        val grouped = whole.await().getOrNull()
+        if (grouped != null) {
+            // Whole, whatever the head start ran into: a category that refused a
+            // request of its own is still in here.
+            incomplete -= tab
+            // One pass over the answer, in the panel's own category order so the
+            // rails do not rearrange themselves under the customer.
+            val rows = mutableListOf<ContentRow>()
+            for (category in wanted) {
+                val items = grouped[category.id].orEmpty()
+                if (items.isEmpty()) continue
+                categoryItems[key(tab, category.id)] = items
+                rows += ContentRow(category.name, items)
             }
-            emit(filled.toList())
+            send(rows)
+            return@channelFlow
+        }
+
+        // The panel would not hand over the whole catalogue — some will not, and
+        // some time out on a request that size. Back to one rail at a time, from
+        // wherever the head start reached.
+        for (batch in wanted.filterNot { it.id in fetched }.chunked(CONCURRENT_CATEGORIES)) {
+            appendCategories(tab, batch, filled, fetched)
+            send(filled.toList())
         }
     }.flowOn(Dispatchers.IO)
+
+    /** Fetches one batch of categories at once and appends the rails they hold. */
+    private suspend fun appendCategories(
+        tab: CatalogTab,
+        batch: List<Category>,
+        into: MutableList<ContentRow>,
+        fetched: MutableSet<String>,
+    ) {
+        val loaded: List<Pair<Category, List<MediaItem>>> = coroutineScope {
+            batch.map { category ->
+                async {
+                    // One category failing is one missing rail, not an empty
+                    // screen — panels routinely have a category that errors
+                    // while the rest are fine.
+                    val items = categoryItems[key(tab, category.id)]
+                        ?: runCatching { itemsIn(tab, category.id) }
+                            .onSuccess { categoryItems[key(tab, category.id)] = it }
+                            .onFailure { incomplete += tab }
+                            .getOrDefault(emptyList<MediaItem>())
+                    category to items
+                }
+            }.awaitAll()
+        }
+
+        loaded.forEach { (category, items) ->
+            fetched += category.id
+            // The whole category is kept, not a preview of it: the rail shows
+            // the first of them and the count beside its name is the rest,
+            // which is only honest if the rest is actually here.
+            if (items.isNotEmpty()) into += ContentRow(category.name, items)
+        }
+    }
+
+    /**
+     * Every stream on the account for this tab, filed under its category id.
+     *
+     * The panel is free to file a stream under a category it never listed, and
+     * those are dropped rather than shown in a rail with no name.
+     */
+    private suspend fun everythingIn(tab: CatalogTab): Map<String, List<MediaItem>> = when (tab) {
+        CatalogTab.LIVE -> liveChannels().groupBy(LiveChannel::categoryId)
+            .mapValues { (_, channels) -> channels.map { it.toItem() } }
+        CatalogTab.MOVIES -> movies().groupBy(Movie::categoryId)
+            .mapValues { (_, films) -> films.map { it.toItem() } }
+        CatalogTab.SERIES -> series().groupBy(Series::categoryId)
+            .mapValues { (_, shows) -> shows.map { it.toItem() } }
+    }
+
+    private fun key(tab: CatalogTab, categoryId: String) = "${tab.name}/$categoryId"
 
     /** False once any category of this tab has failed since the walk began. */
     override fun wasComplete(tab: CatalogTab): Boolean = tab !in incomplete
