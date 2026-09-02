@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      This APK is the television one, so it is on a television whatever the box
+      says about itself.
+
+      The player decides on `values-television`, which only resolves when the
+      system reports the television UI mode. Much of what this app is sold on is
+      a cheap box running plain Android with a launcher over it: it has a remote
+      and no touchscreen and no sensor, and it reports itself as an ordinary
+      handset. Left to the qualifier, the player asked those boxes for
+      sensor-landscape — an orientation a device with no rotation sensor cannot
+      honour — and drew a touch-only button to open the channel list.
+    -->
+    <bool name="is_television">true</bool>
+</resources>

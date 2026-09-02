@@ -217,9 +217,9 @@ private fun LivePlayback(
 
     val handler: (KeyEvent) -> Boolean = handler@{ event ->
         if (event.action != KeyEvent.ACTION_DOWN) return@handler false
-        val digit = event.keyCode - KeyEvent.KEYCODE_0
+        val digit = event.digit()
         when {
-            digit in 0..9 -> {
+            digit != null -> {
                 // Four is the longest number any panel gives out, and it stops
                 // a stuck key turning into nonsense.
                 typed = (typed + digit).takeLast(4)
@@ -283,4 +283,21 @@ private fun LivePlayback(
             showOpenButton = !onRemote && flat.isNotEmpty(),
         )
     }
+}
+
+
+/**
+ * The digit this key stands for, or null when it is not a number key.
+ *
+ * Remotes do not agree on which number keys they send. A television remote
+ * usually sends `KEYCODE_0`, but plenty of the boxes this is installed on —
+ * and every remote whose numbers sit on a keypad — send `KEYCODE_NUMPAD_0`
+ * instead. Reading only the first set left the number keys dead on those,
+ * which is the difference between a box that changes channel and one that
+ * looks broken.
+ */
+private fun KeyEvent.digit(): Int? = when (keyCode) {
+    in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> keyCode - KeyEvent.KEYCODE_0
+    in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9 -> keyCode - KeyEvent.KEYCODE_NUMPAD_0
+    else -> null
 }
