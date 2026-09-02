@@ -22,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
@@ -136,7 +138,12 @@ class XtreamContentRepository(
             send(filled.toList())
         }
 
-        val grouped = whole.await().getOrNull()
+        val outcome = whole.await()
+        // A walk the customer cancelled by leaving the tab is not a panel that
+        // refused the request, and must not fall through to two hundred more.
+        currentCoroutineContext().ensureActive()
+
+        val grouped = outcome.getOrNull()
         if (grouped != null) {
             // Whole, whatever the head start ran into: a category that refused a
             // request of its own is still in here.
