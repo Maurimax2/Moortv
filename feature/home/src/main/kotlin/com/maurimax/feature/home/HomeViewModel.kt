@@ -310,22 +310,35 @@ class HomeViewModel(
 
             try {
                 repository.rows(tab).collect { fresh ->
-                    // Cancellation is not instant, so a late emission still has
-                    // to prove it belongs to the tab on screen.
-                    if (_uiState.value.tab != tab) return@collect
                     val rows = merge(remembered, fresh)
+                    // Kept whether or not this tab is still the one on screen.
+                    // Cancellation is not instant, so the last rails of a walk
+                    // routinely arrive just after the customer has moved on; if
+                    // those were dropped here while the walk went on to finish
+                    // and mark the tab complete, the tab would be remembered
+                    // short by exactly those rails and served that way for the
+                    // rest of the session.
                     cache[tab] = rows
                     // Handed to the player so a channel can be changed without
                     // coming back here — an intent cannot carry a list this big.
                     if (tab == CatalogTab.LIVE) LiveQueue.set(rows)
                     // Posters from any tab will do; the sign-in wall just needs art.
                     Graph.rememberPosters(fresh.flatMap { it.items }.map { it.artworkUrl })
+                    // Only the screen is gated: a late emission must not draw
+                    // films over the live channels the customer just switched to.
+                    if (_uiState.value.tab != tab) return@collect
                     _uiState.update { it.copy(rows = rows, loading = false, failure = null) }
                 }
-                complete += tab
+                // Finished is not the same as whole. A walk that lost a
+                // category to a dropped request has to be walked again on the
+                // next visit, or the rail it lost is gone for the session.
+                if (repository.wasComplete(tab)) complete += tab
+                // From the cache, not from the screen: the two are the same
+                // while this tab is showing, and only the cache is right when
+                // it is not.
+                Graph.cacheRows(tab, cache[tab].orEmpty())
                 if (_uiState.value.tab == tab) {
                     _uiState.update { it.copy(refreshing = false) }
-                    Graph.cacheRows(tab, _uiState.value.rows)
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled

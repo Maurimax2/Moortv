@@ -224,6 +224,68 @@ class HomeViewModelTest {
     }
 
     /**
+     * A category answering with an error is normal on this connection, and the
+     * rail it would have drawn is simply absent. The reported symptom was
+     * channels that were there yesterday and gone today with nothing to press:
+     * the short walk was remembered as the finished one, so coming back to the
+     * tab served the gap from cache instead of asking the panel again.
+     */
+    @Test
+    fun `a tab that lost a category to an error is walked again on return`() = runTest(dispatcher) {
+        var attempts = 0
+        val flaky = object : ContentRepository {
+            override fun rows(tab: CatalogTab) = flow {
+                if (tab != CatalogTab.LIVE) {
+                    emit(listOf(row("movies")))
+                    return@flow
+                }
+                attempts++
+                // The first walk loses a category; the second gets it.
+                if (attempts == 1) emit(listOf(row("first")))
+                else emit(listOf(row("first"), row("second")))
+            }
+
+            override fun wasComplete(tab: CatalogTab) =
+                tab != CatalogTab.LIVE || attempts > 1
+        }
+
+        val viewModel = HomeViewModel(flaky)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.rows.size)
+
+        viewModel.selectTab(CatalogTab.MOVIES)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectTab(CatalogTab.LIVE)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, attempts)
+        assertEquals(2, viewModel.uiState.value.rows.size)
+    }
+
+    /** A tab that came back whole is not walked twice. */
+    @Test
+    fun `a tab that arrived complete is still served from cache`() = runTest(dispatcher) {
+        var attempts = 0
+        val steady = object : ContentRepository {
+            override fun rows(tab: CatalogTab) = flow {
+                if (tab == CatalogTab.LIVE) attempts++
+                emit(listOf(row(if (tab == CatalogTab.LIVE) "live" else "movies")))
+            }
+        }
+
+        val viewModel = HomeViewModel(steady)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectTab(CatalogTab.MOVIES)
+        testScheduler.advanceUntilIdle()
+        viewModel.selectTab(CatalogTab.LIVE)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, attempts)
+    }
+
+    /**
      * A resumed load starts emitting from the first category again, so without
      * merging, a tab of two hundred rails would empty itself back to one and
      * fill up again while the customer was looking at it.

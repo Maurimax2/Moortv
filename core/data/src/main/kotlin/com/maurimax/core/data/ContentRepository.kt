@@ -29,4 +29,19 @@ interface ContentRepository {
      * Empty for anything that is not a series.
      */
     suspend fun seasons(item: MediaItem): List<Season> = emptyList()
+
+    /**
+     * Whether the last walk of this tab returned every category.
+     *
+     * A walk is a few hundred requests over a connection that drops, and one
+     * category answering with an error is normal. That rail is simply absent
+     * from the emissions — so without this, a tab missing channels through a
+     * momentary failure looked exactly like a tab that had finished, was
+     * remembered as finished, and was served short for the rest of the session
+     * with nothing the customer could press to get the rest.
+     *
+     * True by default: an implementation that cannot fail partially is complete
+     * whenever it finishes.
+     */
+    fun wasComplete(tab: CatalogTab): Boolean = true
 }

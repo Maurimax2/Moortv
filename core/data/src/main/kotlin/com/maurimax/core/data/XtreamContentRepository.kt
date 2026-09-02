@@ -67,6 +67,15 @@ class XtreamContentRepository(
     private val categoryLists = ConcurrentHashMap<CatalogTab, List<Category>>()
 
     /**
+     * Tabs whose last walk hit a category the panel would not answer for.
+     *
+     * The rail is left out rather than shown empty, which is right — but the
+     * caller has to know the difference between a tab that finished and a tab
+     * that finished with holes in it, or the holes become permanent.
+     */
+    private val incomplete = ConcurrentHashMap.newKeySet<CatalogTab>()
+
+    /**
      * One rail at a time.
      *
      * The panel is asked for its categories — a small list — and then for the
@@ -80,6 +89,9 @@ class XtreamContentRepository(
      * time one small request takes rather than after all of them.
      */
     override fun rows(tab: CatalogTab): Flow<List<ContentRow>> = flow {
+        // A fresh walk starts whole until something goes wrong in it.
+        incomplete -= tab
+
         // Every category the panel has, not a first page of them. A customer
         // paying for the whole catalogue should be able to reach the whole
         // catalogue; the rails arrive one batch at a time, so a long list costs
@@ -104,6 +116,7 @@ class XtreamContentRepository(
                         val items = categoryItems[key]
                             ?: runCatching { itemsIn(tab, category.id) }
                                 .onSuccess { categoryItems[key] = it }
+                                .onFailure { incomplete += tab }
                                 .getOrDefault(emptyList<MediaItem>())
                         category to items
                     }
@@ -119,6 +132,9 @@ class XtreamContentRepository(
             emit(filled.toList())
         }
     }.flowOn(Dispatchers.IO)
+
+    /** False once any category of this tab has failed since the walk began. */
+    override fun wasComplete(tab: CatalogTab): Boolean = tab !in incomplete
 
     private suspend fun categoriesFor(tab: CatalogTab): List<Category> = when (tab) {
         CatalogTab.LIVE -> liveCategories()
