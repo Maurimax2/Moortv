@@ -528,10 +528,11 @@ private fun LiveChannels(
  * introducing itself, and leading with something already watched makes the
  * whole screen look like a history page.
  */
-private fun HomeUiState.heroItems(): List<MediaItem> {
+@Composable
+private fun HomeUiState.heroItems(): List<MediaItem> = remember(visibleRows) {
     val catalogue = visibleRows.take(4).flatMap { it.items.take(6) }
     val withArt = catalogue.filter { it.artworkUrl.isNotBlank() }
-    return (withArt.ifEmpty { catalogue })
+    (withArt.ifEmpty { catalogue })
         .distinctBy { it.id }
         .take(3)
 }

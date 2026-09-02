@@ -113,7 +113,10 @@ fun ChannelList(
             contentPadding = contentPadding,
             modifier = Modifier.fillMaxSize(),
         ) {
-            itemsIndexed(channels, key = { _, channel -> channel.id }) { index, channel ->
+            // Keyed by position as well as id. A panel is free to list the same
+            // stream twice in one group, and a repeated key in a lazy list is not
+            // a duplicate row — it throws, and this is the tab the app opens on.
+            itemsIndexed(channels, key = { index, channel -> "$index-${channel.id}" }) { index, channel ->
                 ChannelRow(
                     channel = channel,
                     playing = channel.id == playingId,
