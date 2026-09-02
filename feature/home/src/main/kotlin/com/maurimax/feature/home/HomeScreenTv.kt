@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -73,9 +73,18 @@ import com.maurimax.core.model.Sports
 import com.maurimax.core.model.ContentRow
 import com.maurimax.core.model.MediaItem
 import com.maurimax.core.designsystem.R as DS
+import kotlinx.coroutines.delay
 
 /** How many titles a TV rail shows. Travel on a remote is slow. */
 private const val TV_RAIL_PREVIEW = 25
+
+/**
+ * How long the remote has to stop before the backdrop follows it.
+ *
+ * Long enough that holding a direction does not fetch artwork for every tile
+ * it passes, short enough that a single deliberate move still feels immediate.
+ */
+private const val BACKDROP_SETTLE_MS = 260L
 
 @Composable
 fun HomeScreenTv(
@@ -121,21 +130,28 @@ fun HomeScreenTv(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaurimaxTheme.colors
-    var spotlight by remember(state.tab) { mutableStateOf<MediaItem?>(null) }
+    // Held as state and deliberately never read here.
+    //
+    // Focus moves on every press of the D-pad, and reading the spotlight in
+    // this scope made every one of those presses recompose the entire screen —
+    // tab bar, backdrop, counts and all the visible rails. Instead the value is
+    // handed down as a lambda, so only the two composables that actually draw
+    // it are invalidated when it changes.
+    val spotlight = remember(state.tab) { mutableStateOf<MediaItem?>(null) }
     var searchOpen by remember(state.tab) { mutableStateOf(false) }
 
     val rows = state.tvRows()
-    val hero = spotlight ?: rows.firstOrNull()?.items?.firstOrNull()
+    val hero: () -> MediaItem? = remember(rows, spotlight) {
+        { spotlight.value ?: rows.firstOrNull()?.items?.firstOrNull() }
+    }
+    val onFocus: (MediaItem) -> Unit = remember(spotlight) { { spotlight.value = it } }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.ground),
     ) {
-        // Key art only. A channel's logo is a small mark on black, and blowing
-        // one up to fill two thirds of a television is a blurred rectangle
-        // behind the whole interface — charcoal is better than that.
-        if (hero != null && !hero.isLive && hero.artworkUrl.isNotBlank()) Backdrop(hero)
+        Backdrop(hero)
 
         Column(modifier = Modifier.fillMaxSize()) {
             TvTabBar(
@@ -170,7 +186,7 @@ fun HomeScreenTv(
                     } else {
                         TvResults(
                             items = state.searchResults,
-                            onFocus = { spotlight = it },
+                            onFocus = onFocus,
                             onItemClick = onItemClick,
                         )
                     }
@@ -211,7 +227,7 @@ fun HomeScreenTv(
                         total = state.total,
                         catalogueRows = state.visibleRows.size,
                         loading = state.refreshing || state.loading,
-                        onFocus = { spotlight = it },
+                        onFocus = onFocus,
                         onItemClick = onItemClick,
                     )
                 }
@@ -220,9 +236,34 @@ fun HomeScreenTv(
     }
 }
 
-/** Full-bleed art for whatever the remote is on, faded into the page. */
+/**
+ * Full-bleed art for whatever the remote has settled on, faded into the page.
+ *
+ * Settled, not focused. Holding right across a rail moves focus every few
+ * frames, and following each one meant a fresh image fetch and a 320ms
+ * crossfade per keypress — the box spends the whole scroll decoding artwork it
+ * is about to throw away, which is what made moving around feel heavy. Waiting
+ * for the remote to stop costs a quarter of a second on a deliberate move and
+ * costs nothing at all on a fast one.
+ */
 @Composable
-private fun Backdrop(item: MediaItem) {
+private fun Backdrop(hero: () -> MediaItem?) {
+    // The read happens here rather than in the caller, so a focus change
+    // invalidates this and nothing above it.
+    val focused = hero()
+
+    var settled by remember { mutableStateOf(focused) }
+    LaunchedEffect(focused) {
+        delay(BACKDROP_SETTLE_MS)
+        settled = focused
+    }
+
+    val item = settled
+    // Key art only. A channel's logo is a small mark on black, and blowing one
+    // up to fill two thirds of a television is a blurred rectangle behind the
+    // whole interface — charcoal is better than that.
+    if (item == null || item.isLive || item.artworkUrl.isBlank()) return
+
     Box(modifier = Modifier.fillMaxSize()) {
         Crossfade(
             targetState = item,
@@ -348,7 +389,7 @@ private fun TvTabBar(
 private fun TvCatalog(
     rows: List<ContentRow>,
     tab: CatalogTab,
-    hero: MediaItem?,
+    hero: () -> MediaItem?,
     total: Int,
     catalogueRows: Int,
     loading: Boolean,
@@ -364,16 +405,14 @@ private fun TvCatalog(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (hero != null) {
-            HeroCopy(
-                item = hero,
-                modifier = Modifier.padding(
-                    start = Spacing.tvOverscan,
-                    end = Spacing.tvOverscan,
-                    top = Spacing.sm,
-                ),
-            )
-        }
+        HeroCopy(
+            hero = hero,
+            modifier = Modifier.padding(
+                start = Spacing.tvOverscan,
+                end = Spacing.tvOverscan,
+                top = Spacing.sm,
+            ),
+        )
 
         // Across a room the count is the only thing that says whether this is
         // the whole catalogue or the start of it.
@@ -524,7 +563,10 @@ private fun TvLive(
 }
 
 @Composable
-private fun HeroCopy(item: MediaItem, modifier: Modifier = Modifier) {
+private fun HeroCopy(hero: () -> MediaItem?, modifier: Modifier = Modifier) {
+    // Read inside, so following the remote repaints this block of text and
+    // leaves the rails around it alone.
+    val item = hero() ?: return
     val colors = MaurimaxTheme.colors
     val kind = stringResource(item.kind.labelRes)
     val score = item.rating.trim().toDoubleOrNull()
@@ -626,7 +668,10 @@ private fun TvRow(
             // Room for a focused card to scale and draw its border outside.
             contentPadding = PaddingValues(vertical = Spacing.sm),
         ) {
-            itemsIndexed(row.items, key = { _, item -> item.id }) { index, item ->
+            // Position is part of the key because a panel is free to list the
+            // same stream twice in one category, and a repeated key is not a
+            // duplicate tile — it is an exception that takes the screen down.
+            itemsIndexed(row.items, key = { index, item -> "$index-${item.id}" }) { index, item ->
                 TvTile(
                     item = item,
                     onFocus = onFocus,
@@ -880,7 +925,7 @@ private fun TvResults(
             bottom = Spacing.xl,
         ),
     ) {
-        items(items, key = { it.id }) { item ->
+        itemsIndexed(items, key = { index, item -> "$index-${item.id}" }) { _, item ->
             TvTile(
                 item = item,
                 onFocus = onFocus,

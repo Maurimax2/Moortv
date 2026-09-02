@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -346,7 +347,9 @@ private fun TvEpisodes(
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             modifier = Modifier.heightIn(max = 260.dp),
         ) {
-            items(season.episodes, key = { it.id }) { episode ->
+            // Every episode the panel could not give a stream id to is
+            // "episode-0", so the id alone is not unique within a season.
+            itemsIndexed(season.episodes, key = { index, ep -> "$index-${ep.id}" }) { _, episode ->
                 val code = stringResource(R.string.detail_episode_code, episode.season, episode.number)
                 TvAction(
                     label = code + "  ·  " + episode.title.ifBlank {

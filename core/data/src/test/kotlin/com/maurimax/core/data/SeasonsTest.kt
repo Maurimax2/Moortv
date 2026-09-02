@@ -83,6 +83,34 @@ class SeasonsTest {
         assertEquals(listOf(1, 2), seasons[1].episodes.map { it.number })
     }
 
+    /**
+     * Not an assertion about ids so much as a warning about lists.
+     *
+     * A panel that sends an episode without a usable stream id gets "episode-0",
+     * and a season with two of them holds two episodes under one id. Anything
+     * drawing that season has to key its rows by position as well, because a
+     * repeated key in a lazy list is not a cosmetic problem — it throws, and the
+     * screen the customer is standing in front of goes down with it.
+     */
+    @Test
+    fun `episodes the panel gave no id to collide with each other`() = runTest {
+        val api = FakeApi(
+            SeriesInfoResponse(
+                episodes = mapOf(
+                    "1" to listOf(episode("", 1, 1), episode("not-a-number", 1, 2)),
+                ),
+            ),
+        )
+
+        val episodes = repository(api).seasons(series()).single().episodes
+
+        assertEquals(2, episodes.size)
+        assertEquals(listOf("episode-0", "episode-0"), episodes.map { it.id })
+        // And neither of them can play, which is why they are not dropped: the
+        // customer should see the episode exists and that it is the panel's gap.
+        assertTrue(episodes.all { it.playbackUrl.isEmpty() })
+    }
+
     @Test
     fun `the panel is asked for the bare series id`() = runTest {
         val api = FakeApi(SeriesInfoResponse())
