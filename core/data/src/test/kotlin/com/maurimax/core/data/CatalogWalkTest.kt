@@ -19,6 +19,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * How the catalogue is fetched.
@@ -33,15 +35,23 @@ import java.io.IOException
  */
 class CatalogWalkTest {
 
-    /** Counts what the panel was actually asked for. */
+    /**
+     * Counts what the panel was actually asked for.
+     *
+     * Thread safe on purpose: the repository asks for four categories at once,
+     * on the IO dispatcher, so a plain list here loses entries and the test
+     * fails on a schedule of its own rather than on the code.
+     */
     private class CountingApi(
         private val categories: List<CategoryDto>,
         private val streams: List<LiveStreamDto>,
         private val bulkFails: Boolean = false,
     ) : XtreamApi {
-        var bulkCalls = 0
-            private set
-        val perCategoryCalls = mutableListOf<String>()
+        private val bulk = AtomicInteger(0)
+        val bulkCalls: Int get() = bulk.get()
+
+        private val asked = ConcurrentLinkedQueue<String>()
+        val perCategoryCalls: List<String> get() = asked.toList()
 
         override suspend fun login(username: String, password: String): PlayerApiResponse =
             throw IOException("not used")
@@ -54,11 +64,11 @@ class CatalogWalkTest {
             categoryId: String?,
         ): List<LiveStreamDto> {
             if (categoryId == null) {
-                bulkCalls++
+                bulk.incrementAndGet()
                 if (bulkFails) throw IOException("too big for this panel")
                 return streams
             }
-            perCategoryCalls += categoryId
+            asked += categoryId
             return streams.filter { it.categoryId == categoryId }
         }
 
