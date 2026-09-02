@@ -3,10 +3,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- A TV app must declare leanback, and must NOT require a touchscreen. -->
+    <!--
+      Declared, not required.
+
+      Half of what this is installed on is a cheap box running plain Android
+      with a launcher over it: a remote, no touchscreen, and no leanback. It is
+      a television as far as the customer is concerned, and requiring the
+      feature marks the app as unsuitable for the hardware it is mostly sold on.
+    -->
     <uses-feature
         android:name="android.software.leanback"
-        android:required="true" />
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
@@ -32,6 +39,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <!-- LEANBACK_LAUNCHER is what puts the app on the Android TV home row. -->
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <!--
+                  And LAUNCHER is what puts it anywhere else.
+
+                  A box without a leanback launcher has no home row to be on, so
+                  with only the category above the app installed cleanly and then
+                  had no icon at all — nothing to press, on hardware where there
+                  is no app drawer to go looking in either. Declaring both is
+                  harmless on a real Android TV, which reads the leanback entry.
+                -->
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
