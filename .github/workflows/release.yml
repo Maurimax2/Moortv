@@ -19,9 +19,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  windows:
+    name: Build the Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # No lockfile is committed, so this resolves the pinned versions in
+      # package.json rather than whatever is newest today.
+      - name: Install
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        working-directory: desktop
+        env:
+          # Nothing here is signed, and electron-builder should not go looking
+          # for a certificate it will not find.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: desktop/dist/MAURIMAX-Setup.exe
+          if-no-files-found: error
+
   publish:
     name: Build and publish
     runs-on: ubuntu-latest
+    needs: [windows]
 
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +80,12 @@ jobs:
           cp app/tv/build/outputs/apk/debug/*.apk     dist/maurimax-tv.apk
           ls -la dist
 
+      - name: Collect the Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist
+
       # One release, always replaced, so the download URL never changes. A
       # customer's link keeps working while the build behind it moves on.
       - name: Publish to the rolling release
@@ -58,6 +96,9 @@ jobs:
           gh release create latest \
             dist/maurimax-phone.apk \
             dist/maurimax-tv.apk \
+            dist/MAURIMAX-Setup.exe \
             --title "MAURIMAX — latest build" \
-            --notes "Build ${{ github.sha }}. Debug build, unsigned for the Play Store." \
+            --notes "Build ${{ github.sha }}.
+
+Android builds are debug, unsigned for the Play Store. The Windows installer is unsigned, so SmartScreen will warn on first run: More info, then Run anyway." \
             --latest

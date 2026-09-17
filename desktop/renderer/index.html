@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src * data:; media-src * blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src *">
+  <title>MAURIMAX</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<section id="login">
+  <div class="art"></div>
+  <div class="card">
+    <h1>تسجيل الدخول</h1>
+    <div class="lab">اسم المستخدم</div>
+    <div class="field"><input id="u" autocomplete="off" spellcheck="false"></div>
+    <div class="lab">كلمة المرور</div>
+    <div class="field"><input id="p" type="password" autocomplete="off"></div>
+    <button class="primary" id="go">دخول</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+  <div class="brand">
+    <div class="name">MAURIMAX</div>
+    <div class="tag">أول منصة ترفيهية في موريتانيا</div>
+    <div class="sub">سجّل الدخول باسم المستخدم وكلمة المرور الخاصّين باشتراكك.<br>
+      عنوان الخادم مدمج داخل التطبيق.</div>
+  </div>
+</section>
+
+<section id="app" class="hide">
+  <div class="bar">
+    <div class="mark">MAURIMAX</div>
+    <button class="tab on" data-tab="live">البث المباشر</button>
+    <button class="tab" data-tab="movies">أفلام</button>
+    <button class="tab" data-tab="series">مسلسلات</button>
+    <div class="count" id="count"></div>
+    <div class="sp"></div>
+    <div class="search"><input id="q" placeholder="ابحث…"></div>
+    <button class="pbtn" id="out">خروج</button>
+    <div class="who" id="who">M</div>
+  </div>
+
+  <div id="main">
+    <aside id="cats"></aside>
+    <div id="body"><div class="state"><div class="spin"></div>جارٍ تحميل القنوات…</div></div>
+  </div>
+
+  <section id="detail" class="hide"></section>
+
+  <section id="player" class="hide">
+    <video id="v" autoplay></video>
+    <div id="pmsg" class="hide"></div>
+    <div id="typed" class="hide"></div>
+    <div id="pbar">
+      <span class="live" id="liveTag">● مباشر</span>
+      <span class="n" id="pnum"></span>
+      <span class="t" id="ptitle"></span>
+      <div class="sp"></div>
+      <button class="pbtn" id="prev">▲ السابقة</button>
+      <button class="pbtn" id="next">▼ التالية</button>
+      <button class="pbtn" id="fs">ملء الشاشة</button>
+      <button class="pbtn a" id="close">رجوع</button>
+    </div>
+  </section>
+</section>
+
+<script src="../node_modules/hls.js/dist/hls.min.js"></script>
+<script src="../node_modules/mpegts.js/dist/mpegts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

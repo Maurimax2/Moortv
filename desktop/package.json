@@ -1,0 +1,38 @@
+{
+  "name": "maurimax-desktop",
+  "productName": "MAURIMAX",
+  "version": "1.0.0",
+  "description": "MAURIMAX — أول منصة ترفيهية في موريتانيا",
+  "main": "main.js",
+  "author": "MAURIMAX",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "hls.js": "1.4.14",
+    "mpegts.js": "1.7.3"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "site.hlaamart.maurimax",
+    "productName": "MAURIMAX",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "renderer/**/*", "node_modules/hls.js/dist/hls.min.js", "node_modules/mpegts.js/dist/mpegts.js"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "renderer/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "MAURIMAX-Setup.${ext}",
+      "shortcutName": "MAURIMAX"
+    }
+  }
+}
