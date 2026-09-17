@@ -98,7 +98,5 @@ jobs:
             dist/maurimax-tv.apk \
             dist/MAURIMAX-Setup.exe \
             --title "MAURIMAX — latest build" \
-            --notes "Build ${{ github.sha }}.
-
-Android builds are debug, unsigned for the Play Store. The Windows installer is unsigned, so SmartScreen will warn on first run: More info, then Run anyway." \
+            --notes "Build ${{ github.sha }}. Android builds are debug and unsigned for the Play Store. The Windows installer is unsigned too, so SmartScreen warns on first run: More info, then Run anyway." \
             --latest
