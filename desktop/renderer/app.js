@@ -11,7 +11,7 @@ const $ = (id) => document.getElementById(id)
 let PORTAL = 'http://hlaamart.site'
 let account = null                 // { username, password }
 let tab = 'live'
-let categories = []                // [{ id, name }]
+let categories = []                // [{ id, name, items }] for the open tab
 let chosenCategory = null
 let items = []                     // what is on screen now
 let liveLine = []                  // every channel, in order, for ▲ ▼ and dialling
@@ -19,6 +19,23 @@ let playing = null
 let engine = null                  // the hls.js or mpegts.js instance in use
 let typedDigits = ''
 let typingTimer = null
+
+const cache = { live: null, movies: null, series: null }   // loaded catalogues, kept across tab switches
+const inflight = {}                                        // kind -> in-progress load, so two callers share one fetch
+
+/** Runs `worker` over `list` with at most `limit` calls in flight at once. */
+async function mapPool (list, limit, worker) {
+  const results = new Array(list.length)
+  let next = 0
+  async function lane () {
+    while (next < list.length) {
+      const i = next++
+      results[i] = await worker(list[i], i)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, lane))
+  return results
+}
 
 // ---------------------------------------------------------------- panel
 
@@ -87,6 +104,12 @@ function enter () {
   $('app').classList.remove('hide')
   $('who').textContent = (account.username[0] || 'M').toUpperCase()
   openTab('live')
+
+  // Warm the other two catalogues in the background, one at a time, so their
+  // totals and tab switches are ready before the customer asks for them —
+  // without piling every request on the panel at once alongside the live tab.
+  ensureKind('series').catch(() => {})
+    .then(() => ensureKind('movies').catch(() => {}))
 }
 
 // ---------------------------------------------------------------- catalogue
@@ -95,69 +118,102 @@ document.querySelectorAll('.tab').forEach((button) => {
   button.onclick = () => openTab(button.dataset.tab)
 })
 
+function loadingLabel (which) {
+  return which === 'live' ? 'جارٍ تحميل القنوات…'
+    : which === 'movies' ? 'جارٍ تحميل الأفلام…' : 'جارٍ تحميل المسلسلات…'
+}
+
 async function openTab (which) {
   tab = which
   chosenCategory = null
   $('q').value = ''
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === which))
   $('cats').innerHTML = ''
-  $('body').innerHTML = '<div class="state"><div class="spin"></div>جارٍ التحميل…</div>'
-  $('count').textContent = ''
 
-  const action = which === 'live' ? 'get_live_categories'
-    : which === 'movies' ? 'get_vod_categories' : 'get_series_categories'
+  // Already loaded or being loaded (a background prefetch, maybe) — no
+  // spinner needed, the switch is instant either way.
+  if (!cache[which]) {
+    $('body').innerHTML = `<div class="state"><div class="spin"></div>${loadingLabel(which)}</div>`
+  }
+
+  let data
   try {
-    categories = asList(await panel(action)).map((c) => ({
-      id: String(c.category_id),
-      name: String(c.category_name || '').trim() || 'بدون اسم',
-    }))
+    data = await ensureKind(which)
   } catch (error) {
-    return fail(error)
+    if (tab === which) fail(error)
+    return
   }
+  if (tab !== which) return // the customer switched tabs again while this was loading
+
+  categories = data.categories
   if (!categories.length) return empty()
-
-  // Everything at once, then filed by category here — one request instead of
-  // one per rail, which is the difference between seconds and minutes.
-  await loadEverything()
-}
-
-async function loadEverything () {
-  const action = tab === 'live' ? 'get_live_streams'
-    : tab === 'movies' ? 'get_vod_streams' : 'get_series'
-  let all = []
-  try {
-    all = asList(await panel(action))
-  } catch (error) {
-    return fail(error)
-  }
-
-  const byCategory = new Map()
-  for (const raw of all) {
-    const item = shape(raw)
-    if (!item) continue
-    const key = String(raw.category_id)
-    if (!byCategory.has(key)) byCategory.set(key, [])
-    byCategory.get(key).push(item)
-  }
-
-  categories = categories
-    .map((c) => ({ ...c, items: byCategory.get(c.id) || [] }))
-    .filter((c) => c.items.length)
-
-  if (!categories.length) return empty()
-
-  if (tab === 'live') liveLine = categories.flatMap((c) => c.items)
-  const total = categories.reduce((sum, c) => sum + c.items.length, 0)
-  $('count').textContent = `${total.toLocaleString('en')} عنوان · ${categories.length} قسم`
-
+  if (which === 'live') liveLine = data.liveLine || []
   drawCategories()
   choose(categories[0].id)
 }
 
-function shape (raw) {
+/** Loads one catalogue (categories + everything in them), sharing one fetch between callers. */
+function ensureKind (kind) {
+  if (cache[kind]) return Promise.resolve(cache[kind])
+  if (!inflight[kind]) {
+    inflight[kind] = loadKind(kind)
+      .then((data) => { cache[kind] = data; updateTotals(); return data })
+      .finally(() => { delete inflight[kind] })
+  }
+  return inflight[kind]
+}
+
+async function loadKind (kind) {
+  const catAction = kind === 'live' ? 'get_live_categories'
+    : kind === 'movies' ? 'get_vod_categories' : 'get_series_categories'
+  const cats = asList(await panel(catAction)).map((c) => ({
+    id: String(c.category_id),
+    name: String(c.category_name || '').trim() || 'بدون اسم',
+  }))
+  if (!cats.length) return { categories: [], total: 0 }
+
+  let categories
+  if (kind === 'movies') {
+    // A single bulk get_vod_streams call silently caps out well short of the
+    // real catalogue on this panel. Asking per category gets everything —
+    // pooled, not the two hundred sequential requests this used to mean.
+    categories = await mapPool(cats, 6, async (c) => {
+      let raw = []
+      try { raw = asList(await panel('get_vod_streams', { category_id: c.id })) } catch { raw = [] }
+      return { ...c, items: raw.map((r) => shape(r, 'movies')).filter(Boolean) }
+    })
+  } else {
+    const action = kind === 'live' ? 'get_live_streams' : 'get_series'
+    const all = asList(await panel(action))
+    const byCategory = new Map()
+    for (const raw of all) {
+      const item = shape(raw, kind)
+      if (!item) continue
+      const key = String(raw.category_id)
+      if (!byCategory.has(key)) byCategory.set(key, [])
+      byCategory.get(key).push(item)
+    }
+    categories = cats.map((c) => ({ ...c, items: byCategory.get(c.id) || [] }))
+  }
+
+  categories = categories.filter((c) => c.items.length)
+  const total = categories.reduce((sum, c) => sum + c.items.length, 0)
+  const liveLine = kind === 'live' ? categories.flatMap((c) => c.items) : undefined
+  return { categories, total, liveLine }
+}
+
+function updateTotals () {
+  const parts = []
+  if (cache.live) parts.push(`<b>${cache.live.total.toLocaleString('en')}</b> قناة`)
+  if (cache.movies) parts.push(`<b>${cache.movies.total.toLocaleString('en')}</b> فيلم`)
+  if (cache.series) parts.push(`<b>${cache.series.total.toLocaleString('en')}</b> مسلسل`)
+  $('totals').innerHTML = parts.join(' <span class="sp3">·</span> ')
+}
+
+function shape (raw, kind) {
   const name = String(raw.name || '').trim()
   if (!name) return null
-  if (tab === 'live') {
+  if (kind === 'live') {
     return {
       kind: 'live',
       id: String(raw.stream_id),
@@ -167,7 +223,7 @@ function shape (raw) {
       url: streamUrl('live', raw.stream_id),
     }
   }
-  if (tab === 'movies') {
+  if (kind === 'movies') {
     return {
       kind: 'movie',
       id: String(raw.stream_id),
@@ -221,8 +277,8 @@ function draw (list) {
       el.onclick = () => play(list.find((c) => c.id === el.dataset.id))
     })
   } else {
-    $('body').innerHTML = `<div class="grid">${list.map((m) => `
-      <div class="tile" data-id="${m.id}">
+    $('body').innerHTML = `<div class="grid">${list.map((m, i) => `
+      <div class="tile" data-id="${m.id}" style="--i:${i % 24}">
         <div class="art">${m.art
           ? `<img src="${escape(m.art)}" onerror="this.parentNode.textContent='${escape(m.title).slice(0, 40)}'">`
           : `<span>${escape(m.title)}</span>`}</div>
@@ -365,12 +421,28 @@ function stop () {
   try { video.load() } catch {}
 }
 
+// ---- the control bar, which hides itself instead of sitting on screen forever
+
+let idleTimer = null
+
+function wake () {
+  $('player').classList.remove('idle')
+  clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => {
+    if ($('v').paused) return // stay up while paused — there is nothing else to look at
+    $('player').classList.add('idle')
+  }, 3000)
+}
+
+;['mousemove', 'mousedown', 'click'].forEach((type) => $('player').addEventListener(type, wake))
+
 function play (item) {
   if (!item || !item.url) return
   playing = item
   stop()
 
   $('player').classList.remove('hide')
+  wake()
   $('pmsg').classList.add('hide')
   $('ptitle').textContent = item.title
   $('pnum').textContent = item.number ? String(item.number) : ''
@@ -437,7 +509,13 @@ function step (by) {
 
 $('prev').onclick = () => step(-1)
 $('next').onclick = () => step(1)
-$('close').onclick = () => { stop(); $('player').classList.add('hide'); window.mx.fullscreen(false) }
+$('close').onclick = () => {
+  stop()
+  clearTimeout(idleTimer)
+  $('player').classList.remove('idle')
+  $('player').classList.add('hide')
+  window.mx.fullscreen(false)
+}
 $('fs').onclick = () => {
   const on = !document.fullscreenElement
   window.mx.fullscreen(on)
@@ -457,6 +535,8 @@ document.addEventListener('keydown', (e) => {
     if (!$('detail').classList.contains('hide')) return $('detail').classList.add('hide')
   }
   if (!watching || inField) return
+
+  wake()
 
   if (e.key >= '0' && e.key <= '9') {
     typedDigits = (typedDigits + e.key).slice(-4)
@@ -479,6 +559,17 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------------------------------------------------------- start
+
+// Bundled locally — decoration for the sign-in screen, not fetched from the
+// panel, so it is there instantly and before anyone has typed a password.
+const POSTER_FILES = [
+  'm-batman', 'm-got', 'm-breakingbad', 'm-spiderman', 'm-walkingdead', 'm-lacasa',
+  'm-fury', 'm-oppenheimer', 'm-odyssey', 'x-homelander', 'x-tyrion', 'x-punisher',
+  'x-walter', 'x-jane',
+]
+$('posters').innerHTML = Array(3).fill(POSTER_FILES).flat()
+  .map((f) => `<img src="posters/${f}.webp" alt="" loading="lazy">`)
+  .join('')
 
 ;(async () => {
   PORTAL = await window.mx.portal()
